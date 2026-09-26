@@ -4,7 +4,7 @@
   <title>WONDERER - LAAG ni kHEr</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Tailwind CSS para sa nindot ug responsive nga UI -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -12,23 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    /* Custom border styles base sa imong original design */
-    .border-dotted-red { border-top: 3px dotted red; }
-    .border-solid-blue { border-top: 5px solid blue; }
+    .border-dotted-gold { border-top: 3px dotted #f59e0b; }
+    .border-solid-gold { border-top: 5px solid #d97706; }
   </style>
 </head>
 
-<body class="bg-gray-100 text-gray-800 font-sans p-2 sm:p-6">
+<body class="bg-slate-950 text-slate-100 font-sans p-2 sm:p-6">
   
-  <div class="max-w-lg mx-auto bg-white rounded-3xl shadow-lg overflow-hidden border-4 border-green-600">
+  <div class="max-w-lg mx-auto bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border-4 border-amber-500">
     
     <!-- HEADER -->
-    <div class="bg-green-600 p-4 flex items-center justify-center space-x-4">
-      <img src="https://lh3.googleusercontent.com/d/15aQxvPrKO7S2lVUdhQ99BrwpJqcNKohl" alt="Wonderer Logo" class="w-28 h-28 rounded-full border-2 border-white shadow-md">
+    <div class="bg-gradient-to-r from-amber-600 to-amber-700 p-4 flex items-center justify-center space-x-4 shadow-md">
+      <img src="https://lh3.googleusercontent.com/d/15aQxvPrKO7S2lVUdhQ99BrwpJqcNKohl" alt="Wonderer Logo" class="w-28 h-28 rounded-full border-2 border-amber-300 shadow-lg">
       <div class="text-center">
-        <h1 class="text-4xl font-bold font-mono text-red-500 tracking-wider">WONDERER</h1>
-        <h2 class="text-xl text-white font-semibold">(LAAG ni kHEr)</h2>
-        <h3 class="text-sm text-white">Diary v1.0</h3>
+        <h1 class="text-4xl font-bold font-mono text-slate-950 tracking-wider drop-shadow">WONDERER</h1>
+        <h2 class="text-xl text-amber-200 font-semibold">(LAAG ni kHEr)</h2>
+        <h3 class="text-sm text-amber-100">Diary v1.0</h3>
       </div>
     </div>
 
@@ -36,30 +35,30 @@
       
       <!-- DATE & LOCATION DISPLAY -->
       <div class="text-center space-y-1">
-        <div id="theDate" class="text-lg font-medium text-gray-600"></div>
-        <div id="status" class="text-red-500 font-bold animate-pulse text-lg">Locating...</div>
-        <a id="map-link" target="_blank" class="text-2xl font-bold text-blue-600 hover:underline block"></a>
-        <div id="geoAddress" class="text-sm font-semibold text-gray-800"></div>
+        <div id="theDate" class="text-lg font-medium text-amber-400"></div>
+        <div id="status" class="text-amber-500 font-bold animate-pulse text-lg">Locating...</div>
+        <a id="map-link" target="_blank" class="text-2xl font-bold text-amber-300 hover:underline block"></a>
+        <div id="geoAddress" class="text-sm font-semibold text-slate-300"></div>
       </div>
 
-      <div class="border-dotted-red my-4"></div>
-      <div class="border-solid-blue my-4"></div>
+      <div class="border-dotted-gold my-4"></div>
+      <div class="border-solid-gold my-4"></div>
 
       <!-- FORM FIELDS -->
       <div class="space-y-4">
         <div class="flex items-center justify-between">
-          <label class="text-green-700 italic font-semibold w-1/3">Remarks:</label>
-          <input type="text" id="remarks" class="w-2/3 border-b-2 border-gray-300 focus:border-green-600 outline-none text-xl p-1" />
+          <label class="text-amber-400 italic font-semibold w-1/3">Remarks:</label>
+          <input type="text" id="remarks" class="w-2/3 bg-slate-800 text-white border-b-2 border-slate-700 focus:border-amber-500 outline-none text-xl p-1 rounded px-2" />
         </div>
 
         <div class="flex items-center justify-between">
-          <label class="text-red-500 italic font-semibold w-1/3 text-right pr-4">ODO:</label>
-          <input type="number" id="odo" class="w-2/3 border-b-2 border-gray-300 focus:border-red-500 outline-none text-xl p-1 text-right" />
+          <label class="text-amber-400 italic font-semibold w-1/3 text-right pr-4">ODO:</label>
+          <input type="number" id="odo" class="w-2/3 bg-slate-800 text-white border-b-2 border-slate-700 focus:border-amber-500 outline-none text-xl p-1 text-right rounded px-2" />
         </div>
 
         <div class="flex items-center justify-between">
-          <label class="text-green-700 italic font-semibold w-1/3">Expense:</label>
-          <select id="expense" class="w-2/3 border-b-2 border-gray-300 focus:border-green-600 outline-none text-lg p-1 bg-white">
+          <label class="text-amber-400 italic font-semibold w-1/3">Expense:</label>
+          <select id="expense" class="w-2/3 bg-slate-800 text-white border-b-2 border-slate-700 focus:border-amber-500 outline-none text-lg p-1 rounded px-2">
             <option value="" disabled selected>-- Select --</option>
             <option value="fuel">Fuel</option>
             <option value="oil">Oil/Coolant</option>
@@ -77,32 +76,32 @@
         </div>
 
         <div class="flex items-center justify-between">
-          <label class="text-red-500 italic font-semibold w-1/3 text-right pr-4">Amount:</label>
-          <input type="number" placeholder="₱ 0.00" step="0.01" id="amount" class="w-2/3 border-b-2 border-gray-300 focus:border-red-500 outline-none text-2xl p-1 text-right font-bold" />
+          <label class="text-amber-400 italic font-semibold w-1/3 text-right pr-4">Amount:</label>
+          <input type="number" placeholder="₱ 0.00" step="0.01" id="amount" class="w-2/3 bg-slate-800 text-white border-b-2 border-slate-700 focus:border-amber-500 outline-none text-2xl p-1 text-right font-bold rounded px-2" />
         </div>
       </div>
 
-      <div class="border-solid-blue my-4 mt-6"></div>
+      <div class="border-solid-gold my-4 mt-6"></div>
 
       <!-- SUBMIT BUTTON -->
-      <button id="find-me" class="w-full mt-4 bg-green-800 hover:bg-green-700 text-white font-bold text-3xl py-5 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+      <button id="find-me" class="w-full mt-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-3xl py-5 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 tracking-widest">
         S U B M I T
       </button>
 
     </div>
 
     <!-- FOOTER -->
-    <div class="bg-blue-900 text-center text-white p-2 text-xs">
+    <div class="bg-slate-950 text-center text-amber-500 p-2 text-xs border-t border-slate-800">
       © 2022 rayHARGG technicus™
     </div>
 
   </div>
 
   <script>
-    // SUPABASE SETUP (Ilisi ni sa imong tinuod nga credentials)
+    // SUPABASE SETUP
     const SUPABASE_URL = 'https://iilfklquzyxmdergwawh.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_xO3twPzyDBLhdltnkwoS3w_xswYLyf_';
-    const mySupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); // <--- NA-FIX NA!
+    const mySupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // Initializations
     document.getElementById("theDate").innerHTML = new Date().toDateString();
@@ -122,8 +121,6 @@
       return degrees + "° " + minutes + "' " + seconds + '"';
     }
 
-    let watcherId = null;
-
     function geoPangitaaKo() {
       const status = document.querySelector('#status');
       const mapLink = document.querySelector('#map-link');
@@ -137,43 +134,38 @@
       status.textContent = 'Locating...';
       
       const geoOptions = {
-        enableHighAccuracy: true,  // Pugson ang GPS chip pagpangita
-        timeout: 10000,            // 10 seconds limit
-        maximumAge: 0              // Dili mogamit og daan nga location
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       };
       
       navigator.geolocation.getCurrentPosition((position) => {
         currentLat = position.coords.latitude;
         currentLng = position.coords.longitude;
         
-        // Pag-convert ngadto sa Degrees, Minutes, Seconds (DMS)
         const latDMS = toDMS(currentLat) + (currentLat >= 0 ? " N" : " S");
         const lngDMS = toDMS(currentLng) + (currentLng >= 0 ? " E" : " W");
         currentDms = `${latDMS}, ${lngDMS}`;
 
-        // 1. Ibutang ang DMS sa clickable map link
         mapLink.href = `https://www.google.com/maps/place/${currentLat},${currentLng}`;
         mapLink.textContent = currentDms;
         
-        // 2. Papason dayon ang text nga 'Locating...'
         status.textContent = ''; 
         
-        // 3. Ipakita ang RAW COORDINATES dayon (Paspas!)
         currentAddress = `📍 Lat: ${currentLat.toFixed(6)} | Lon: ${currentLng.toFixed(6)}`;
         geoAddress.innerHTML = currentAddress;
 
-        // 4. PANGITAON ANG ADDRESS SA BACKGROUND (Kung naay internet)
+        // Background address fetch
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`)
           .then(response => response.json())
           .then(data => {
             if (data.display_name) {
                currentAddress = data.display_name;
-               // Ilisan ang Lat/Lon og tinuod nga address inig load
                geoAddress.innerHTML = `📍 ${currentAddress}`; 
             }
           })
           .catch(error => {
-            console.log("Hinay ang internet o na-block. Lat/Lon lang una ang gamiton.");
+            console.log("Offline mode or VPN blocking address.");
           });
 
       }, (error) => {
@@ -203,7 +195,6 @@
       
       const ip = await getIpAddress();
 
-      // Dynamic assignment sa gasto paingon sa saktong column sa database
       const dbRow = {
         dms: currentDms,
         address: currentAddress,
@@ -216,30 +207,36 @@
         dbRow[expenseType] = amount;
       }
 
-      // Supabase Insert
       const { data, error } = await mySupabase
         .from('kher_diary')
         .insert([dbRow]);
 
       if (error) {
         console.error(error);
-        Swal.fire("Error!", "Wala ma-save sa database. Check console.", "error");
+        Swal.fire({
+          title: "Error!",
+          text: "Wala ma-save sa database.",
+          icon: "error",
+          background: "#1e293b",
+          color: "#fff"
+        });
       } else {
         Swal.fire({
           position: "center",
           title: "Your diary has been saved",
           text: "RECORDED!",
           icon: 'success',
+          background: "#1e293b",
+          color: "#fff",
           showConfirmButton: false,
           timer: 2500
         });
         
-        // Reset fields
         document.getElementById('remarks').value = '';
         document.getElementById('odo').value = '';
         document.getElementById("expense").value = '';
         document.getElementById("amount").value = '';
-        geoPangitaaKo(); // Refresh location
+        geoPangitaaKo();
       }
 
       btn.disabled = false;
