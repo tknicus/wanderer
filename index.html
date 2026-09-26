@@ -402,15 +402,29 @@
     }
 
     async function geoSaveMe() {
-      const btn = document.getElementById('find-me');
-      btn.disabled = true;
-      btn.textContent = "PROCESSING & UPLOADING...";
-
-      const rem = document.getElementById('remarks').value;
-      const odo = document.getElementById('odo').value || null;
+      const rem = document.getElementById('remarks').value.trim();
+      const odo = document.getElementById('odo').value.trim();
       const expenseType = document.getElementById("expense").value;
       const amount = parseFloat(document.getElementById("amount").value) || 0;
       const fileInput = document.getElementById('cameraInput');
+      
+      const hasPhoto = fileInput.files && fileInput.files[0];
+
+      // KINI ANG VALIDATION: Kon pulos blangko ang tanan, i-block ang submit!
+      if (!rem && !odo && !expenseType && amount === 0 && !hasPhoto) {
+        Swal.fire({
+          title: "Blanko ang Porma!",
+          text: "Palihog butangi bisan usa lang ka field (Remarks, ODO, Expense, o Litrato) sa dili pa mo-submit.",
+          icon: "warning",
+          background: "#1e293b",
+          color: "#fff"
+        });
+        return; // Mo-undang ug dili dayon mo-save sa database
+      }
+
+      const btn = document.getElementById('find-me');
+      btn.disabled = true;
+      btn.textContent = "PROCESSING & UPLOADING...";
       
       const ip = await getIpAddress();
 
@@ -419,10 +433,10 @@
 
       let photoUrl = null;
 
-      if (fileInput.files && fileInput.files[0] && navigator.onLine) {
+      if (hasPhoto && navigator.onLine) {
         let file = fileInput.files[0];
         
-        // Ibutang ang Watermark (Logo sa ubos-wala, Coordinates & Time sa ubos-tuo)
+        // Watermark Image
         const logoUrl = "https://lh3.googleusercontent.com/d/15aQxvPrKO7S2lVUdhQ99BrwpJqcNKohl";
         file = await watermarkImage(file, currentDms, timeSubmitStr, logoUrl);
 
@@ -455,8 +469,8 @@
         dms: currentDms,
         address: currentAddress,
         ip_address: ip,
-        remarks: rem,
-        odo: odo,
+        remarks: rem || null,
+        odo: odo ? parseFloat(odo) : null,
         time_submit: timeSubmitStr,
         photo_url: photoUrl
       };
@@ -470,7 +484,7 @@
         if (success) {
           Swal.fire({
             position: "center",
-            title: "Saved with Watermarked Photo!",
+            title: "Naka-save na sa Diary!",
             text: "RECORDED ONLINE!",
             icon: 'success',
             background: "#1e293b",
@@ -483,7 +497,7 @@
           saveToLocalStorage(dbRow);
           Swal.fire({
             title: "Saved Offline",
-            text: "Wala na-save sa server, gi-store sa phone muna.",
+            text: "Wala ma-save sa server, gi-store sa phone muna.",
             icon: "warning",
             background: "#1e293b",
             color: "#fff"
