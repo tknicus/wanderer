@@ -134,19 +134,15 @@
         return;
       }
 
-      // Gi-usab nako ang text para kabalo ta nga kani nga code ang nag-dagan
-      status.textContent = 'Paspas nga pag-locate...';
+      status.textContent = 'Locating...';
       
       const geoOptions = {
-        // KINI ANG SEKRETO: I-false aron INSTANT mokuha sa laptop/VPN
-        enableHighAccuracy: false, 
-        // 5 seconds ra ang ihatag nga time, kung lapas na, mo-error dayon imbes mag-stuck
-        timeout: 5000,       
-        // Pwede gamiton ang karaan nga location record aron paspas
-        maximumAge: Infinity 
+        enableHighAccuracy: true,  // Parehas gyud sa MasterMinds
+        timeout: 10000,            // 10 seconds huwat
+        maximumAge: 0
       };
       
-      navigator.geolocation.getCurrentPosition(async (position) => {
+      navigator.geolocation.getCurrentPosition((position) => {
         currentLat = position.coords.latitude;
         currentLng = position.coords.longitude;
         
@@ -154,41 +150,31 @@
         const lngDMS = toDMS(currentLng) + (currentLng >= 0 ? " E" : " W");
         currentDms = `${latDMS}, ${lngDMS}`;
 
-        // PAKITA DIRETASO SA SCREEN (Walay huwatay sa Internet)
+        // 1. IPAKITA DIRETASO SA SCREEN (Walay huwatay!)
         mapLink.href = `https://www.google.com/maps/place/${currentLat},${currentLng}`;
         mapLink.textContent = currentDms;
-        status.textContent = ''; // Papasa dayon ang text
+        status.textContent = ''; // Papason dayon ang 'Locating...'
         
-        // Ibutang sa ang Lat/Lon sa Address bar para naay makita dayon
-        geoAddress.innerHTML = `📍 Lat: ${currentLat} | Lon: ${currentLng}`; 
+        // 2. Ipakita ang Lat/Lon sa address bar (Parehas sa MasterMinds)
+        geoAddress.innerHTML = `📍 Lat: ${currentLat.toFixed(6)} | Lon: ${currentLng.toFixed(6)}`;
 
-        // KARON PA LANG MANGAYO SA ADDRESS
-        try {
-          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`);
-          const data = await response.json();
-          if (data.display_name) {
-             currentAddress = data.display_name;
-             geoAddress.innerHTML = currentAddress; 
-          }
-        } catch (error) {
-          console.log("Hinay internet sa address translation.");
-        }
+        // 3. PANGITAON ANG ADDRESS SA BACKGROUND
+        // Kung ma-block sa VPN o walay internet, okay ra kay naa nay Lat/Lon nga naka-display.
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.display_name) {
+               currentAddress = data.display_name;
+               // Ilisan ang Lat/Lon og tinuod nga address kung maka-connect sa internet
+               geoAddress.innerHTML = currentAddress; 
+            }
+          })
+          .catch(error => {
+            console.log("Nominatim API blocked by VPN or slow internet. Using raw GPS logic.");
+          });
 
       }, (error) => {
-        // KINI ANG PANG-KONTRA STUCK. Kung mapakyas, ipakita ang rason imbes mag "Locating..."
-        switch(error.code) {
-          case error.PERMISSION_DENIED:
-            status.textContent = "I-ALLOW ang Location sa imong browser (I-click ang lock icon sa taas).";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            status.textContent = "Dili makita ang location info.";
-            break;
-          case error.TIMEOUT:
-            status.textContent = "Timeout! Hinay mokuha og location.";
-            break;
-          default:
-            status.textContent = "Error: " + error.message;
-        }
+        status.textContent = 'Error: ' + error.message;
       }, geoOptions);
     }
 
