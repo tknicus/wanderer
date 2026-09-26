@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>WONDERER - LAAG ni kHEr</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Tailwind CSS para sa nindot ug responsive nga UI -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* Custom border styles base sa imong original design */
+    .border-dotted-red { border-top: 3px dotted red; }
+    .border-solid-blue { border-top: 5px solid blue; }
+  </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800 font-sans p-2 sm:p-6">
+  
+  <div class="max-w-lg mx-auto bg-white rounded-3xl shadow-lg overflow-hidden border-4 border-green-600">
+    
+    <!-- HEADER -->
+    <div class="bg-green-600 p-4 flex items-center justify-center space-x-4">
+      <img src="https://lh3.googleusercontent.com/d/15aQxvPrKO7S2lVUdhQ99BrwpJqcNKohl" alt="Wonderer Logo" class="w-28 h-28 rounded-full border-2 border-white shadow-md">
+      <div class="text-center">
+        <h1 class="text-4xl font-bold font-mono text-red-500 tracking-wider">WONDERER</h1>
+        <h2 class="text-xl text-white font-semibold">(LAAG ni kHEr)</h2>
+        <h3 class="text-sm text-white">Diary v1.0</h3>
+      </div>
+    </div>
+
+    <div class="p-4 sm:p-6 space-y-4">
+      
+      <!-- DATE & LOCATION DISPLAY -->
+      <div class="text-center space-y-1">
+        <div id="theDate" class="text-lg font-medium text-gray-600"></div>
+        <div id="status" class="text-red-500 font-bold animate-pulse text-lg">Locating...</div>
+        <a id="map-link" target="_blank" class="text-2xl font-bold text-blue-600 hover:underline block"></a>
+        <div id="geoAddress" class="text-sm font-semibold text-gray-800"></div>
+      </div>
+
+      <div class="border-dotted-red my-4"></div>
+      <div class="border-solid-blue my-4"></div>
+
+      <!-- FORM FIELDS -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <label class="text-green-700 italic font-semibold w-1/3">Remarks:</label>
+          <input type="text" id="remarks" class="w-2/3 border-b-2 border-gray-300 focus:border-green-600 outline-none text-xl p-1" />
+        </div>
+
+        <div class="flex items-center justify-between">
+          <label class="text-red-500 italic font-semibold w-1/3 text-right pr-4">ODO:</label>
+          <input type="number" id="odo" class="w-2/3 border-b-2 border-gray-300 focus:border-red-500 outline-none text-xl p-1 text-right" />
+        </div>
+
+        <div class="flex items-center justify-between">
+          <label class="text-green-700 italic font-semibold w-1/3">Expense:</label>
+          <select id="expense" class="w-2/3 border-b-2 border-gray-300 focus:border-green-600 outline-none text-lg p-1 bg-white">
+            <option value="" disabled selected>-- Select --</option>
+            <option value="fuel">Fuel</option>
+            <option value="oil">Oil/Coolant</option>
+            <option value="meal">Meal/Food/Snack</option>
+            <option value="lodge">Lodge/Hotel/Inn</option>
+            <option value="roro">Roro/Barge/Boat</option>
+            <option value="passenger">Passenger's Ticket</option>
+            <option value="medicine">Medicine</option>
+            <option value="repair">Repairs & Maintenance</option>
+            <option value="parts">Parts & Supplies</option>
+            <option value="amusement">Amusement Parks</option>
+            <option value="clothing">Clothing/Souvenir</option>
+            <option value="toll">Road Tolls</option>
+          </select>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <label class="text-red-500 italic font-semibold w-1/3 text-right pr-4">Amount:</label>
+          <input type="number" placeholder="₱ 0.00" step="0.01" id="amount" class="w-2/3 border-b-2 border-gray-300 focus:border-red-500 outline-none text-2xl p-1 text-right font-bold" />
+        </div>
+      </div>
+
+      <div class="border-solid-blue my-4 mt-6"></div>
+
+      <!-- SUBMIT BUTTON -->
+      <button id="find-me" class="w-full mt-4 bg-green-800 hover:bg-green-700 text-white font-bold text-3xl py-5 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+        S U B M I T
+      </button>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="bg-blue-900 text-center text-white p-2 text-xs">
+      © 2022 rayHARGG technicus™
+    </div>
+
+  </div>
+
+  <script>
+    // SUPABASE SETUP (Ilisi ni sa imong tinuod nga credentials)
+    const SUPABASE_URL = 'https://iilfklquzyxmdergwawh.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_xO3twPzyDBLhdltnkwoS3w_xswYLyf_';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Initializations
+    document.getElementById("theDate").innerHTML = new Date().toDateString();
+    let currentLat = null;
+    let currentLng = null;
+    let currentDms = null;
+    let currentAddress = null;
+
+    geoPangitaaKo();
+
+    function toDMS(coordinate) {
+      const absolute = Math.abs(coordinate);
+      const degrees = Math.floor(absolute);
+      const minutesNotTruncated = (absolute - degrees) * 60;
+      const minutes = Math.floor(minutesNotTruncated);
+      const seconds = Math.floor((minutesNotTruncated - minutes) * 60);
+      return degrees + "° " + minutes + "' " + seconds + '"';
+    }
+
+    function geoPangitaaKo() {
+      const status = document.querySelector('#status');
+      const mapLink = document.querySelector('#map-link');
+      const geoAddress = document.getElementById('geoAddress');
+
+      if (!navigator.geolocation) {
+        status.textContent = 'Geolocation is not supported by your browser';
+        return;
+      }
+
+      status.textContent = 'Locating...';
+      
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        currentLat = position.coords.latitude;
+        currentLng = position.coords.longitude;
+        
+        const latDMS = toDMS(currentLat) + (currentLat >= 0 ? " N" : " S");
+        const lngDMS = toDMS(currentLng) + (currentLng >= 0 ? " E" : " W");
+        currentDms = `${latDMS}, ${lngDMS}`;
+
+        mapLink.href = `https://www.google.com/maps/place/${currentLat},${currentLng}`;
+        mapLink.textContent = currentDms;
+        status.textContent = '';
+
+        // Reverse Geocoding gamit ang Libre nga OpenStreetMap API (Nominatim)
+        try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`);
+          const data = await response.json();
+          currentAddress = data.display_name;
+          geoAddress.innerHTML = currentAddress;
+        } catch (error) {
+          geoAddress.innerHTML = "Address not found";
+        }
+
+      }, () => {
+        status.textContent = 'Unable to retrieve your location';
+      });
+    }
+
+    async function getIpAddress() {
+      try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const data = await res.json();
+        return data.ip;
+      } catch (e) {
+        return "Unknown IP";
+      }
+    }
+
+    async function geoSaveMe() {
+      const btn = document.getElementById('find-me');
+      btn.disabled = true;
+      btn.textContent = "SAVING...";
+
+      const rem = document.getElementById('remarks').value;
+      const odo = document.getElementById('odo').value || null;
+      const expenseType = document.getElementById("expense").value;
+      const amount = parseFloat(document.getElementById("amount").value) || 0;
+      
+      const ip = await getIpAddress();
+
+      // Dynamic assignment sa gasto paingon sa saktong column sa database
+      const dbRow = {
+        dms: currentDms,
+        address: currentAddress,
+        ip_address: ip,
+        remarks: rem,
+        odo: odo
+      };
+
+      if (expenseType && amount > 0) {
+        dbRow[expenseType] = amount;
+      }
+
+      // Supabase Insert
+      const { data, error } = await supabase
+        .from('kher_diary')
+        .insert([dbRow]);
+
+      if (error) {
+        console.error(error);
+        Swal.fire("Error!", "Wala ma-save sa database. Check console.", "error");
+      } else {
+        Swal.fire({
+          position: "center",
+          title: "Your diary has been saved",
+          text: "RECORDED!",
+          icon: 'success',
+          showConfirmButton: false,
+          timer: 2500
+        });
+        
+        // Reset fields
+        document.getElementById('remarks').value = '';
+        document.getElementById('odo').value = '';
+        document.getElementById("expense").value = '';
+        document.getElementById("amount").value = '';
+        geoPangitaaKo(); // Refresh location
+      }
+
+      btn.disabled = false;
+      btn.textContent = "S U B M I T";
+    }
+
+    document.querySelector('#find-me').addEventListener('click', geoSaveMe);
+  </script>
+</body>
+</html>
