@@ -122,26 +122,32 @@
       return degrees + "° " + minutes + "' " + seconds + '"';
     }
 
+    let watcherId = null;
+
     function geoPangitaaKo() {
       const status = document.querySelector('#status');
       const mapLink = document.querySelector('#map-link');
       const geoAddress = document.getElementById('geoAddress');
 
       if (!navigator.geolocation) {
-        status.textContent = 'Geolocation is not supported by your browser';
+        status.textContent = 'GPS not supported sa imong browser!';
         return;
       }
 
-      status.textContent = 'Locating...';
-      
-      // KANI ANG GIDUGANG: Settings para paspas makakuha ug dili ma-stuck
-      const geoOptions = {
-        enableHighAccuracy: true,
-        timeout: 10000,      // Mo-undang og huwat after 10 seconds para dili ma-stuck
-        maximumAge: 60000    // Pwede ra niya gamiton ang location nimo 1 minute ago
+      status.textContent = 'Pugsanay nga pag-Locate...';
+
+      const gpsOptions = {
+        enableHighAccuracy: true, // I-set ni og "false" kung gusto nimo ma-instant ug okay ra nimo dili kaayo swak sa metro
+        timeout: 10000,           // 10 seconds ra ang limit sa paghulat
+        maximumAge: 60000         // Pwede gamiton ang GPS record nimo within 1 minute
       };
       
-      navigator.geolocation.getCurrentPosition(async (position) => {
+      // HACK: Ang watchPosition mas paspas mo-trigger sa GPS Hardware kaysa getCurrentPosition
+      watcherId = navigator.geolocation.watchPosition(async (position) => {
+        
+        // I-stop dayon ang watchPosition aron maka-save sa battery kay nakuha na nato ang unang signal
+        if (watcherId) navigator.geolocation.clearWatch(watcherId);
+
         currentLat = position.coords.latitude;
         currentLng = position.coords.longitude;
         
@@ -149,25 +155,28 @@
         const lngDMS = toDMS(currentLng) + (currentLng >= 0 ? " E" : " W");
         currentDms = `${latDMS}, ${lngDMS}`;
 
+        // PAKITA DIRETASO SA SCREEN (Walay huwatay sa Internet)
         mapLink.href = `https://www.google.com/maps/place/${currentLat},${currentLng}`;
         mapLink.textContent = currentDms;
-        status.textContent = ''; // Mawala na ang "Locating..." kay nakuha na ang GPS
+        status.textContent = ''; // Papasa dayon ang 'Locating...'
+        
+        // Ibutang sa ang Lat/Lon sa Address bar para naay makita dayon ang user
+        geoAddress.innerHTML = `📍 Lat: ${currentLat} | Lon: ${currentLng}`; 
 
-        // Try pagkuha sa saktong Address, pero og mag-error, ang raw Lat/Lon gihapon ang gamiton
+        // KARON PA LANG MANGAYO SA ADDRESS (Background process)
         try {
           const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`);
           const data = await response.json();
           currentAddress = data.display_name;
-          geoAddress.innerHTML = currentAddress;
+          // Pulihi ang Lat/Lon og tinuod nga address text inig load sa internet
+          geoAddress.innerHTML = currentAddress; 
         } catch (error) {
-          currentAddress = `Lat: ${currentLat} | Lon: ${currentLng}`;
-          geoAddress.innerHTML = "Offline/Slow Net: " + currentAddress;
+          console.log("Hinay ang internet. Offline mode Lat/Lon lang sa.");
         }
 
       }, (error) => {
-        // Kung mapakyas (ex. na-timeout o naka-off ang GPS)
-        status.textContent = 'Error: ' + error.message;
-      }, geoOptions); // Gi-aplay na ang geoOptions diri
+        status.textContent = 'GPS Error: ' + error.message;
+      }, gpsOptions);
     }
 
     async function getIpAddress() {
