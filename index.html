@@ -166,11 +166,11 @@
         return;
       }
 
-      status.textContent = 'Locating...';
+      status.textContent = 'Locating GPS... (Gawas sa landong kung dugay)';
       
       const geoOptions = {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 12000, // 12 seconds timeout
         maximumAge: 0
       };
       
@@ -205,7 +205,11 @@
         }
 
       }, (error) => {
-        status.textContent = 'Error: ' + error.message;
+        console.warn("GPS Warning:", error.message);
+        status.textContent = 'GPS Error / Timeout!';
+        mapLink.textContent = "🔄 I-click diri para mo-RETRY sa GPS";
+        mapLink.href = "javascript:geoPangitaaKo();";
+        geoAddress.innerHTML = "⚠️ Palihog i-on ang Location/GPS o gawas kadiyot sa silong.";
       }, geoOptions);
     }
 
