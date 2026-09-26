@@ -330,22 +330,44 @@
       const timeSubmitStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
       let photoUrl = null;
+      let hasPhoto = false;
 
-      if (fileInput.files && fileInput.files[0] && navigator.onLine) {
-        const file = fileInput.files[0];
-        const fileName = `diary_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
-        
-        const { data: uploadData, error: uploadError } = await mySupabase.storage
-          .from('diary_photos')
-          .upload(fileName, file);
-
-        if (!uploadError) {
-          const { data: publicUrlData } = mySupabase.storage
+      // Suriin kung may piniling file o larawan ang user
+      if (fileInput.files && fileInput.files[0]) {
+        hasPhoto = true;
+        if (navigator.onLine) {
+          const file = fileInput.files[0];
+          const fileName = `diary_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
+          
+          const { data: uploadData, error: uploadError } = await mySupabase.storage
             .from('diary_photos')
-            .getPublicUrl(fileName);
-          photoUrl = publicUrlData.publicUrl;
+            .upload(fileName, file);
+
+          if (uploadError) {
+            Swal.fire({
+              title: "Error sa Pag-upload ng Larawan!",
+              text: uploadError.message,
+              icon: "error",
+              background: "#1e293b",
+              color: "#fff"
+            });
+            btn.disabled = false;
+            btn.textContent = "S U B M I;";
+            return;
+          } else {
+            const { data: publicUrlData } = mySupabase.storage
+              .from('diary_photos')
+              .getPublicUrl(fileName);
+            photoUrl = publicUrlData.publicUrl;
+          }
         } else {
-          console.error("Photo upload error:", uploadError);
+          Swal.fire({
+            title: "Offline",
+            text: "Hindi ma-upload ang litrato habang offline.",
+            icon: "warning",
+            background: "#1e293b",
+            color: "#fff"
+          });
         }
       }
 
@@ -368,7 +390,7 @@
         if (success) {
           Swal.fire({
             position: "center",
-            title: "Saved with Photo!",
+            title: hasPhoto && photoUrl ? "Naka-save na may kasamang Larawan!" : "Naka-save na (Walang Larawan)!",
             text: "RECORDED ONLINE!",
             icon: 'success',
             background: "#1e293b",
@@ -381,7 +403,7 @@
           saveToLocalStorage(dbRow);
           Swal.fire({
             title: "Saved Offline",
-            text: "Wala na-save sa server, gi-store sa phone muna.",
+            text: "Hindi na-save sa server, nakatago muna sa phone.",
             icon: "warning",
             background: "#1e293b",
             color: "#fff"
@@ -393,7 +415,7 @@
         Swal.fire({
           position: "center",
           title: "Saved to Phone (Offline)",
-          text: "Mu-auto sync kini inig abot sa internet!",
+          text: "Mag-a-auto sync ito pagdating ng internet!",
           icon: 'info',
           background: "#1e293b",
           color: "#fff",
