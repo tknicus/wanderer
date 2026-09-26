@@ -1,0 +1,15 @@
+{
+  "name": "WONDERER - LAAG ni kHEr",
+  "short_name": "WONDERER",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#f59e0b",
+  "icons": [
+    {
+      "src": "https://lh3.googleusercontent.com/d/15aQxvPrKO7S2lVUdhQ99BrwpJqcNKohl",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

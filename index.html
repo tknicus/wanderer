@@ -4,6 +4,12 @@
   <title>WONDERER - LAAG ni kHEr</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <!-- PWA MANIFEST UG ICON -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/15aQxvPrKO7S2lVUdhQ99BrwpJqcNKohl">
+  <meta name="theme-color" content="#020617">
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SweetAlert2 -->
@@ -299,7 +305,6 @@
       
       const ip = await getIpAddress();
 
-      // PHT Timestamp para sa time_submit
       const now = new Date();
       const timeSubmitStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
@@ -316,7 +321,6 @@
         dbRow[expenseType] = amount;
       }
 
-      // Check if online or offline
       if (navigator.onLine) {
         let success = await sendDataToServer(dbRow);
         if (success) {
@@ -332,7 +336,6 @@
           });
           resetForm();
         } else {
-          // Kung naa bay sipyat sa server, i-save sa local storage as backup
           saveToLocalStorage(dbRow);
           Swal.fire({
             title: "Saved Offline",
@@ -344,7 +347,6 @@
           resetForm();
         }
       } else {
-        // WALAY INTERNET: Save direkta sa Local Storage (Phone)
         saveToLocalStorage(dbRow);
         Swal.fire({
           position: "center",
@@ -372,6 +374,15 @@
     }
 
     document.querySelector('#find-me').addEventListener('click', geoSaveMe);
+
+    // SERVICE WORKER REGISTRATION PARA SA PWA (OFFLINE MODE)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => { console.log('Service Worker registered!', reg.scope); })
+          .catch((err) => { console.log('Service Worker registration failed:', err); });
+      });
+    }
   </script>
 </body>
 </html>
