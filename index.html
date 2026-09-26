@@ -171,21 +171,24 @@
         
         status.textContent = ''; 
         
+        // Ibutang dayon ang Raw Coordinates sa address (Di mag-depend sa internet)
         currentAddress = `📍 Lat: ${currentLat.toFixed(6)} | Lon: ${currentLng.toFixed(6)}`;
         geoAddress.innerHTML = currentAddress;
 
-        // Background address fetch
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`)
-          .then(response => response.json())
-          .then(data => {
-            if (data.display_name) {
-               currentAddress = data.display_name;
-               geoAddress.innerHTML = `📍 ${currentAddress}`; 
-            }
-          })
-          .catch(error => {
-            console.log("Offline mode or VPN blocking address.");
-          });
+        // KUNG ONLINE RA: Kuhaon ang tinuod nga address gikan sa Nominatim API
+        if (navigator.onLine) {
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`)
+            .then(response => response.json())
+            .then(data => {
+              if (data.display_name) {
+                 currentAddress = data.display_name;
+                 geoAddress.innerHTML = `📍 ${currentAddress}`; 
+              }
+            })
+            .catch(error => {
+              console.log("Address fetch skipped (Network or API issue).");
+            });
+        }
 
       }, (error) => {
         status.textContent = 'Error: ' + error.message;
@@ -193,6 +196,7 @@
     }
 
     async function getIpAddress() {
+      if (!navigator.onLine) return "Offline IP";
       try {
         const res = await fetch("https://api.ipify.org?format=json");
         const data = await res.json();
@@ -339,7 +343,7 @@
           saveToLocalStorage(dbRow);
           Swal.fire({
             title: "Saved Offline",
-            text: "Wala na-save sa server, gi-store sa phone muna.",
+            text: "Wala ma-save sa server, gi-store sa phone muna.",
             icon: "warning",
             background: "#1e293b",
             color: "#fff"
