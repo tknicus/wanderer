@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wonderer-cache-v4';
+const CACHE_NAME = 'wanderer-cache-v5';
 const urlsToCache = [
   './',
   './index.html',
