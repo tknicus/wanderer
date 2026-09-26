@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wonderer-cache-v3';
+const CACHE_NAME = 'wonderer-cache-v4';
 const urlsToCache = [
   './',
   './index.html',
@@ -29,19 +29,23 @@ self.addEventListener('activate', event => {
   );
 });
 
-// 3. Fetch strategy uban ang Navigation Fallback para sa Offline Mode
+// 3. Fetch strategy uban ang saktong Cache-First Navigation Fallback
 self.addEventListener('fetch', event => {
-  // Kung ang gipangayo kay ang tibuok page navigation (pag-abli sa app)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      caches.match('./index.html').then(response => {
-        return response || fetch(event.request);
-      }).catch(() => caches.match('./index.html'))
+      caches.match('./index.html')
+        .then(cachedResponse => {
+          if (cachedResponse) return cachedResponse;
+          return caches.match('./');
+        })
+        .then(response => {
+          return response || fetch(event.request);
+        })
+        .catch(() => caches.match('./index.html'))
     );
     return;
   }
 
-  // Alang sa ubang files (CSS, JS, images, etc.)
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -52,7 +56,7 @@ self.addEventListener('fetch', event => {
           });
         });
       }).catch(() => {
-        // Safe fallback kung offline ug walay cache
+        // Safe fallback kung offline
       })
   );
 });
