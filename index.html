@@ -158,12 +158,25 @@
         // 2. Papason dayon ang text nga 'Locating...'
         status.textContent = ''; 
         
-        // 3. Ipakita ang RAW COORDINATES imbes nga Address (Paspas kay walay internet gikinahanglan!)
+        // 3. Ipakita ang RAW COORDINATES dayon (Paspas!)
         currentAddress = `📍 Lat: ${currentLat.toFixed(6)} | Lon: ${currentLng.toFixed(6)}`;
         geoAddress.innerHTML = currentAddress;
 
+        // 4. PANGITAON ANG ADDRESS SA BACKGROUND (Kung naay internet)
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.display_name) {
+               currentAddress = data.display_name;
+               // Ilisan ang Lat/Lon og tinuod nga address inig load
+               geoAddress.innerHTML = `📍 ${currentAddress}`; 
+            }
+          })
+          .catch(error => {
+            console.log("Hinay ang internet o na-block. Lat/Lon lang una ang gamiton.");
+          });
+
       }, (error) => {
-        // Kung mag-error (ex. naka-off ang GPS), ipakita unsay rason
         status.textContent = 'Error: ' + error.message;
       }, geoOptions);
     }
