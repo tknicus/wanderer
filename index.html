@@ -137,43 +137,33 @@
       status.textContent = 'Locating...';
       
       const geoOptions = {
-        enableHighAccuracy: true,  // Parehas gyud sa MasterMinds
-        timeout: 10000,            // 10 seconds huwat
-        maximumAge: 0
+        enableHighAccuracy: true,  // Pugson ang GPS chip pagpangita
+        timeout: 10000,            // 10 seconds limit
+        maximumAge: 0              // Dili mogamit og daan nga location
       };
       
       navigator.geolocation.getCurrentPosition((position) => {
         currentLat = position.coords.latitude;
         currentLng = position.coords.longitude;
         
+        // Pag-convert ngadto sa Degrees, Minutes, Seconds (DMS)
         const latDMS = toDMS(currentLat) + (currentLat >= 0 ? " N" : " S");
         const lngDMS = toDMS(currentLng) + (currentLng >= 0 ? " E" : " W");
         currentDms = `${latDMS}, ${lngDMS}`;
 
-        // 1. IPAKITA DIRETASO SA SCREEN (Walay huwatay!)
+        // 1. Ibutang ang DMS sa clickable map link
         mapLink.href = `https://www.google.com/maps/place/${currentLat},${currentLng}`;
         mapLink.textContent = currentDms;
-        status.textContent = ''; // Papason dayon ang 'Locating...'
         
-        // 2. Ipakita ang Lat/Lon sa address bar (Parehas sa MasterMinds)
-        geoAddress.innerHTML = `📍 Lat: ${currentLat.toFixed(6)} | Lon: ${currentLng.toFixed(6)}`;
-
-        // 3. PANGITAON ANG ADDRESS SA BACKGROUND
-        // Kung ma-block sa VPN o walay internet, okay ra kay naa nay Lat/Lon nga naka-display.
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`)
-          .then(response => response.json())
-          .then(data => {
-            if (data.display_name) {
-               currentAddress = data.display_name;
-               // Ilisan ang Lat/Lon og tinuod nga address kung maka-connect sa internet
-               geoAddress.innerHTML = currentAddress; 
-            }
-          })
-          .catch(error => {
-            console.log("Nominatim API blocked by VPN or slow internet. Using raw GPS logic.");
-          });
+        // 2. Papason dayon ang text nga 'Locating...'
+        status.textContent = ''; 
+        
+        // 3. Ipakita ang RAW COORDINATES imbes nga Address (Paspas kay walay internet gikinahanglan!)
+        currentAddress = `📍 Lat: ${currentLat.toFixed(6)} | Lon: ${currentLng.toFixed(6)}`;
+        geoAddress.innerHTML = currentAddress;
 
       }, (error) => {
+        // Kung mag-error (ex. naka-off ang GPS), ipakita unsay rason
         status.textContent = 'Error: ' + error.message;
       }, geoOptions);
     }
