@@ -1,20 +1,15 @@
-const CACHE_NAME = 'wonderer-cache-v2';
+const CACHE_NAME = 'wonderer-cache-v3';
 const urlsToCache = [
+  './',
   './index.html',
   './manifest.json'
-  'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/sweetalert2@11',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  'https://lh3.googleusercontent.com/d/15aQxvPrKO7S2lVUdhQ99BrwpJqcNKohl'  
 ];
 
 // 1. Install Service Worker ug i-cache ang core files
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
+      .then(cache => cache.addAll(urlsToCache))
       .then(() => self.skipWaiting())
   );
 });
@@ -34,23 +29,30 @@ self.addEventListener('activate', event => {
   );
 });
 
-// 3. Fetch strategy: Kuha sa cache, kung wala kay kuha sa network ug i-save sa cache
+// 3. Fetch strategy uban ang Navigation Fallback para sa Offline Mode
 self.addEventListener('fetch', event => {
+  // Kung ang gipangayo kay ang tibuok page navigation (pag-abli sa app)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      caches.match('./index.html').then(response => {
+        return response || fetch(event.request);
+      }).catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  // Alang sa ubang files (CSS, JS, images, etc.)
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        if (response) {
-          return response; // Nakita sa cache (Pwedeng offline)
-        }
-        return fetch(event.request).then(networkResponse => {
-          // I-save sa cache ang bag-ong nakuha gikan sa network para magamit sunod
+        return response || fetch(event.request).then(networkResponse => {
           return caches.open(CACHE_NAME).then(cache => {
             cache.put(event.request, networkResponse.clone());
             return networkResponse;
           });
-        }).catch(() => {
-          // Kung offline ug walay cache para ani nga request
         });
+      }).catch(() => {
+        // Safe fallback kung offline ug walay cache
       })
   );
 });
