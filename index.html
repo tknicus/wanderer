@@ -104,7 +104,7 @@
         S U B M I T
       </button>
 
-      <!-- VIEW EXPENSE SUMMARY BUTTON -->
+      <!-- EXPENSE SUMMARY BUTTON -->
       <button onclick="showExpenseSummary()" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500 font-bold text-lg py-3 rounded-full shadow-md transition duration-300">
         📊 VIEW EXPENSE SUMMARY
       </button>
@@ -176,11 +176,9 @@
         
         status.textContent = ''; 
         
-        // Ibutang dayon ang Raw Coordinates sa address (Di mag-depend sa internet)
         currentAddress = `📍 Lat: ${currentLat.toFixed(6)} | Lon: ${currentLng.toFixed(6)}`;
         geoAddress.innerHTML = currentAddress;
 
-        // KUNG ONLINE RA: Kuhaon ang tinuod nga address gikan sa Nominatim API
         if (navigator.onLine) {
           fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`)
             .then(response => response.json())
@@ -191,7 +189,7 @@
               }
             })
             .catch(error => {
-              console.log("Address fetch skipped (Network or API issue).");
+              console.log("Address fetch skipped.");
             });
         }
 
@@ -211,7 +209,6 @@
       }
     }
 
-    // INTERNET & SYNC MONITORING
     function checkRealInternet() {
       const sigStatus = document.getElementById('signalStatus');
       if (!sigStatus) return;
@@ -382,27 +379,35 @@
       geoPangitaaKo();
     }
 
-    document.querySelector('#find-me').addEventListener('click', geoSaveMe);
-
-    // SERVICE WORKER REGISTRATION PARA SA PWA (OFFLINE MODE)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then((reg) => { console.log('Service Worker registered!', reg.scope); })
-          .catch((err) => { console.log('Service Worker registration failed:', err); });
-      });
-    }
-
-    // FUNCTION PARA SA EXPENSE SUMMARY
+    // EXPENSE SUMMARY POPUP FUNCTION
     async function showExpenseSummary() {
-      // Kuhaon ang tanang data gikan sa Supabase table
+      if (!navigator.onLine) {
+        Swal.fire({
+          title: "Offline Mode",
+          text: "Kinahanglan og internet para ma-load ang summary gikan sa Supabase.",
+          icon: "warning",
+          background: "#1e293b",
+          color: "#fff"
+        });
+        return;
+      }
+
+      Swal.fire({
+        title: "Nagkuha sa data...",
+        text: "Palihog paghulat kadiyot.",
+        background: "#1e293b",
+        color: "#fff",
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
+
       const { data, error } = await mySupabase.from('kher_diary').select('*');
       
       if (error) {
         console.error(error);
         Swal.fire({
           title: "Error!",
-          text: "Dili ma-load ang summary gikan sa database.",
+          text: "Wala ma-load ang summary gikan sa database.",
           icon: "error",
           background: "#1e293b",
           color: "#fff"
@@ -413,7 +418,7 @@
       if (!data || data.length === 0) {
         Swal.fire({
           title: "Walay Record",
-          text: "Wala pa kay natala nga data sa Supabase.",
+          text: "Wala pa kay natala nga records sa database.",
           icon: "info",
           background: "#1e293b",
           color: "#fff"
@@ -421,24 +426,19 @@
         return;
       }
 
-      // Listahan sa tanang expense categories base sa imong dropdown
       const categories = ['fuel', 'oil', 'meal', 'lodge', 'roro', 'passenger', 'medicine', 'repair', 'parts', 'amusement', 'clothing', 'toll'];
       let totals = {};
       categories.forEach(cat => totals[cat] = 0);
       let grandTotal = 0;
 
-      // I-loop ang tanang rows ug i-sum ang gasto matag category
       data.forEach(row => {
         categories.forEach(cat => {
-          if (row[cat]) {
-            let val = parseFloat(row[cat]) || 0;
-            totals[cat] += val;
-            grandTotal += val;
-          }
+          let val = parseFloat(row[cat]) || 0;
+          totals[cat] += val;
+          grandTotal += val;
         });
       });
 
-      // Himuon ang nindot nga HTML list para sa SweetAlert
       let htmlContent = `<div style="text-align: left; max-height: 250px; overflow-y: auto; padding: 5px;">`;
       let hasExpense = false;
 
@@ -447,7 +447,7 @@
           hasExpense = true;
           htmlContent += `<div style="display: flex; justify-content: space-between; border-bottom: 1px solid #334155; padding: 6px 0;">
                             <span style="text-transform: uppercase; color: #f59e0b; font-weight: bold;">${cat}:</span>
-                            <span style="color: #fff;">₱ ${totals[cat].toFixed(2)}</span>
+                            <span style="color: #fff; font-weight: bold;">₱ ${totals[cat].toFixed(2)}</span>
                           </div>`;
         }
       });
@@ -462,7 +462,6 @@
                         <span style="color: #4ade80;">₱ ${grandTotal.toFixed(2)}</span>
                       </div>`;
 
-      // Ipakita ang Summary gamit ang SweetAlert2
       Swal.fire({
         title: "📊 WONDERER EXPENSE SUMMARY",
         html: htmlContent,
@@ -470,6 +469,17 @@
         color: "#fff",
         confirmButtonColor: "#d97706",
         confirmButtonText: "OKAY"
+      });
+    }
+
+    document.querySelector('#find-me').addEventListener('click', geoSaveMe);
+
+    // SERVICE WORKER REGISTRATION
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => { console.log('Service Worker registered!', reg.scope); })
+          .catch((err) => { console.log('Service Worker registration failed:', err); });
       });
     }
   </script>
