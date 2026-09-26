@@ -211,7 +211,7 @@
       });
     }
 
-    // WATERMARK FUNCTION (Logo sa bottom-left, Coordinates & Date/Time sa bottom-right)
+    // WATERMARK FUNCTION (Logo sa bottom-left, Text sa bottom-right walay box)
     function watermarkImage(file, dmsText, dateText, logoSrc) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -231,7 +231,7 @@
             const logo = new Image();
             logo.crossOrigin = "anonymous";
             logo.onload = function() {
-              const logoSize = Math.max(100, Math.floor(canvas.width * 0.18));
+              const logoSize = Math.max(120, Math.floor(canvas.width * 0.18));
               const padding = Math.floor(canvas.width * 0.03);
 
               const logoX = padding;
@@ -242,7 +242,7 @@
               ctx.beginPath();
               ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2, true);
               ctx.closePath();
-              ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+              ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
               ctx.fill();
               ctx.lineWidth = 4;
               ctx.strokeStyle = '#f59e0b';
@@ -252,48 +252,38 @@
               ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
               ctx.restore();
 
-              // Text Setup (Bottom-Right)
-              const fontSize = Math.max(18, Math.floor(canvas.width * 0.025));
+              // Text Setup (Bottom-Right, Walay Box, Balanse sa Height sa Logo)
+              const fontSize = Math.max(20, Math.floor(canvas.width * 0.026));
               ctx.font = `bold ${fontSize}px sans-serif`;
               ctx.textBaseline = 'bottom';
-
-              const textLines = [dmsText || '', dateText || ''].filter(Boolean);
-
-              let maxWidth = 0;
-              textLines.forEach(line => {
-                const metrics = ctx.measureText(line);
-                if (metrics.width > maxWidth) maxWidth = metrics.width;
-              });
-
-              const textX = canvas.width - padding;
-              const lineHeight = fontSize * 1.4;
-              const boxPadding = fontSize * 0.6;
-              const boxWidth = maxWidth + (boxPadding * 2);
-              const boxHeight = (textLines.length * lineHeight) + boxPadding;
-              const boxX = canvas.width - boxWidth - padding;
-              const boxY = canvas.height - boxHeight - padding;
-
-              // Draw text background box
-              ctx.save();
-              ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-              ctx.strokeStyle = '#f59e0b';
-              ctx.lineWidth = 2;
-              ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-              ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-              ctx.restore();
-
-              // Draw Text
-              ctx.fillStyle = '#ffffff';
               ctx.textAlign = 'right';
 
+              const textLines = [
+                "kHEr d Wanderer",
+                dmsText || '',
+                dateText || ''
+              ];
+
+              const textX = canvas.width - padding;
+              const lineHeight = fontSize * 1.35;
+              const startY = canvas.height - padding - (textLines.length * lineHeight) + lineHeight;
+
               textLines.forEach((line, index) => {
-                const currentY = boxY + boxPadding + ((index + 1) * lineHeight) - (lineHeight * 0.2);
-                ctx.fillText(line, textX - boxPadding, currentY);
+                const currentY = startY + (index * lineHeight);
+                
+                // Shadow / Stroke paraklaro bisan asang background
+                ctx.lineWidth = fontSize * 0.25;
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+                ctx.strokeText(line, textX, currentY);
+
+                // Main White Text
+                ctx.fillStyle = index === 0 ? '#f59e0b' : '#ffffff'; // Puti ang coordinates/date, gold ang "kHEr d Wanderer"
+                ctx.fillText(line, textX, currentY);
               });
 
               canvas.toBlob((blob) => {
                 resolve(blob);
-              }, 'image/jpeg', 0.90);
+              }, 'image/jpeg', 0.92);
             };
 
             logo.onerror = function() {
