@@ -162,19 +162,30 @@
       const geoAddress = document.getElementById('geoAddress');
 
       if (!navigator.geolocation) {
-        status.textContent = 'Geolocation is not supported by your browser';
+        status.textContent = 'Geolocation is not supported';
         return;
       }
 
-      status.textContent = 'Locating GPS... (Gawas sa landong kung dugay)';
-      
-      const geoOptions = {
-        enableHighAccuracy: true,
-        timeout: 12000, // 12 seconds timeout
-        maximumAge: 0
-      };
-      
+      status.textContent = 'Locating GPS...';
+
+      let gpsDone = false;
+
+      // Safety timer: Kung mo-lapas sa 8 segundos ug walay GPS fix, i-stop aron dili mapilit
+      const timer = setTimeout(() => {
+        if (!gpsDone) {
+          gpsDone = true;
+          status.textContent = 'GPS Timeout / Na-stock!';
+          mapLink.textContent = "🔄 I-click diri para mo-RETRY sa GPS";
+          mapLink.href = "javascript:geoPangitaaKo();";
+          geoAddress.innerHTML = "⚠️ Siguraduhing naka-ON ang Location/GPS sa celfone o gawas kadiyot.";
+        }
+      }, 8000);
+
       navigator.geolocation.getCurrentPosition((position) => {
+        if (gpsDone) return;
+        gpsDone = true;
+        clearTimeout(timer);
+
         currentLat = position.coords.latitude;
         currentLng = position.coords.longitude;
         
@@ -205,12 +216,20 @@
         }
 
       }, (error) => {
-        console.warn("GPS Warning:", error.message);
-        status.textContent = 'GPS Error / Timeout!';
+        if (gpsDone) return;
+        gpsDone = true;
+        clearTimeout(timer);
+
+        console.warn("GPS Error:", error.message);
+        status.textContent = 'GPS Error / Blocked!';
         mapLink.textContent = "🔄 I-click diri para mo-RETRY sa GPS";
         mapLink.href = "javascript:geoPangitaaKo();";
-        geoAddress.innerHTML = "⚠️ Palihog i-on ang Location/GPS o gawas kadiyot sa silong.";
-      }, geoOptions);
+        geoAddress.innerHTML = "⚠️ I-check ang Location permission sa browser settings.";
+      }, {
+        enableHighAccuracy: true,
+        timeout: 7000,
+        maximumAge: 0
+      });
     }
 
     async function getIpAddress() {
