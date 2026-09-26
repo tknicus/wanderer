@@ -33,6 +33,16 @@
 
     <div class="p-4 sm:p-6 space-y-4">
       
+      <!-- STATUS & DASHBOARD COUNTER -->
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex justify-between items-center text-xs font-semibold">
+        <div>
+          <span class="text-slate-400">SIGNAL:</span> <span id="signalStatus" class="text-green-400">🟢 ONLINE</span>
+        </div>
+        <div>
+          <span class="text-slate-400">PENDING OFFLINE:</span> <span id="pendingCount" class="text-amber-400 font-bold">0</span>
+        </div>
+      </div>
+
       <!-- DATE & LOCATION DISPLAY -->
       <div class="text-center space-y-1">
         <div id="theDate" class="text-lg font-medium text-amber-400"></div>
@@ -109,8 +119,11 @@
     let currentLng = null;
     let currentDms = null;
     let currentAddress = null;
+    let isSyncing = false;
 
     geoPangitaaKo();
+    updatePendingCounter();
+    checkRealInternet();
 
     function toDMS(coordinate) {
       const absolute = Math.abs(coordinate);
@@ -183,6 +196,97 @@
       }
     }
 
+    // INTERNET & SYNC MONITORING
+    function checkRealInternet() {
+      const sigStatus = document.getElementById('signalStatus');
+      if (!sigStatus) return;
+      if (navigator.onLine) {
+        sigStatus.innerHTML = "🟢 ONLINE";
+        sigStatus.style.color = "#4ade80";
+        let offlineData = JSON.parse(localStorage.getItem('kher_offline_diary')) || [];
+        if (offlineData.length > 0 && !isSyncing) {
+          syncOfflineData();
+        }
+      } else {
+        sigStatus.innerHTML = "🔴 OFFLINE";
+        sigStatus.style.color = "#f87171";
+      }
+    }
+
+    window.addEventListener('online', checkRealInternet);
+    window.addEventListener('offline', checkRealInternet);
+    setInterval(checkRealInternet, 10000);
+
+    function updatePendingCounter() {
+      let offlineData = JSON.parse(localStorage.getItem('kher_offline_diary')) || [];
+      const pCount = document.getElementById('pendingCount');
+      if (pCount) {
+        pCount.innerText = offlineData.length;
+      }
+    }
+
+    async function sendDataToServer(dbRow) {
+      const { error } = await mySupabase
+        .from('kher_diary')
+        .insert([dbRow]);
+      if (error) {
+        console.error("Supabase Error:", error);
+        return false;
+      }
+      return true;
+    }
+
+    async function syncOfflineData() {
+      if (isSyncing) return;
+      let offlineData = JSON.parse(localStorage.getItem('kher_offline_diary')) || [];
+      if (offlineData.length === 0) return;
+
+      isSyncing = true;
+      const btn = document.getElementById('find-me');
+      if (btn) {
+        btn.textContent = "SYNCING OFFLINE DATA...";
+        btn.disabled = true;
+      }
+
+      let failedData = [];
+      for (let i = 0; i < offlineData.length; i++) {
+        let success = await sendDataToServer(offlineData[i]);
+        if (!success) {
+          failedData.push(offlineData[i]);
+        }
+      }
+
+      if (failedData.length > 0) {
+        localStorage.setItem('kher_offline_diary', JSON.stringify(failedData));
+      } else {
+        localStorage.removeItem('kher_offline_diary');
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: 'Naka-sync na ang offline data sa Supabase!',
+          showConfirmButton: false,
+          timer: 3000,
+          background: "#1e293b",
+          color: "#fff"
+        });
+      }
+
+      updatePendingCounter();
+      if (btn) {
+        btn.textContent = "S U B M I T";
+        btn.disabled = false;
+      }
+      isSyncing = false;
+    }
+
+    function saveToLocalStorage(dbRow) {
+      let savedData = JSON.parse(localStorage.getItem('kher_offline_diary')) || [];
+      savedData.push(dbRow);
+      localStorage.setItem('kher_offline_diary', JSON.stringify(savedData));
+      updatePendingCounter();
+    }
+
     async function geoSaveMe() {
       const btn = document.getElementById('find-me');
       btn.disabled = true;
@@ -195,52 +299,76 @@
       
       const ip = await getIpAddress();
 
+      // PHT Timestamp para sa time_submit
+      const now = new Date();
+      const timeSubmitStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
       const dbRow = {
         dms: currentDms,
         address: currentAddress,
         ip_address: ip,
         remarks: rem,
-        odo: odo
+        odo: odo,
+        time_submit: timeSubmitStr
       };
 
       if (expenseType && amount > 0) {
         dbRow[expenseType] = amount;
       }
 
-      const { data, error } = await mySupabase
-        .from('kher_diary')
-        .insert([dbRow]);
-
-      if (error) {
-        console.error(error);
-        Swal.fire({
-          title: "Error!",
-          text: "Wala ma-save sa database.",
-          icon: "error",
-          background: "#1e293b",
-          color: "#fff"
-        });
+      // Check if online or offline
+      if (navigator.onLine) {
+        let success = await sendDataToServer(dbRow);
+        if (success) {
+          Swal.fire({
+            position: "center",
+            title: "Your diary has been saved",
+            text: "RECORDED ONLINE!",
+            icon: 'success',
+            background: "#1e293b",
+            color: "#fff",
+            showConfirmButton: false,
+            timer: 2000
+          });
+          resetForm();
+        } else {
+          // Kung naa bay sipyat sa server, i-save sa local storage as backup
+          saveToLocalStorage(dbRow);
+          Swal.fire({
+            title: "Saved Offline",
+            text: "Wala na-save sa server, gi-store sa phone muna.",
+            icon: "warning",
+            background: "#1e293b",
+            color: "#fff"
+          });
+          resetForm();
+        }
       } else {
+        // WALAY INTERNET: Save direkta sa Local Storage (Phone)
+        saveToLocalStorage(dbRow);
         Swal.fire({
           position: "center",
-          title: "Your diary has been saved",
-          text: "RECORDED!",
-          icon: 'success',
+          title: "Saved to Phone (Offline)",
+          text: "Mu-auto sync kini inig abot sa internet!",
+          icon: 'info',
           background: "#1e293b",
           color: "#fff",
           showConfirmButton: false,
           timer: 2500
         });
-        
-        document.getElementById('remarks').value = '';
-        document.getElementById('odo').value = '';
-        document.getElementById("expense").value = '';
-        document.getElementById("amount").value = '';
-        geoPangitaaKo();
+        resetForm();
       }
 
       btn.disabled = false;
       btn.textContent = "S U B M I T";
+    }
+
+    function resetForm() {
+      document.getElementById('remarks').value = '';
+      document.getElementById('odo').value = '';
+      document.getElementById("expense").value = '';
+      document.getElementById("amount").value = '';
+      geoPangitaaKo();
     }
 
     document.querySelector('#find-me').addEventListener('click', geoSaveMe);
