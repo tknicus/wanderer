@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>WANDERER - LAAG ni kHEr</title>
+  <title>WONDERER - LAAG ni kHEr</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
@@ -31,7 +31,7 @@
     <div class="bg-gradient-to-r from-amber-600 to-amber-700 p-4 flex items-center justify-center space-x-4 shadow-md">
       <img src="https://lh3.googleusercontent.com/d/15aQxvPrKO7S2lVUdhQ99BrwpJqcNKohl" alt="Wonderer Logo" class="w-28 h-28 rounded-full border-2 border-amber-300 shadow-lg">
       <div class="text-center">
-        <h1 class="text-4xl font-bold font-mono text-slate-950 tracking-wider drop-shadow">WANDERER</h1>
+        <h1 class="text-4xl font-bold font-mono text-slate-950 tracking-wider drop-shadow">WONDERER</h1>
         <h2 class="text-xl text-amber-200 font-semibold">(LAAG ni kHEr)</h2>
         <h3 class="text-sm text-amber-100">Diary v1.0</h3>
       </div>
@@ -62,6 +62,12 @@
 
       <!-- FORM FIELDS -->
       <div class="space-y-4">
+        <!-- CAMERA / PHOTO CAPTURE -->
+        <div class="flex flex-col space-y-1">
+          <label class="text-amber-400 italic font-semibold">Take Photo / Attach Image:</label>
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" class="bg-slate-800 text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-amber-500 file:text-slate-955 hover:file:bg-amber-600 outline-none p-2 rounded border border-slate-700" />
+        </div>
+
         <div class="flex items-center justify-between">
           <label class="text-amber-400 italic font-semibold w-1/3">Remarks:</label>
           <input type="text" id="remarks" class="w-2/3 bg-slate-800 text-white border-b-2 border-slate-700 focus:border-amber-500 outline-none text-xl p-1 rounded px-2" />
@@ -109,7 +115,7 @@
         📊 VIEW EXPENSE SUMMARY
       </button>
 
-      <!-- VIEW TRIP LOGS HISTORY BUTTON -->
+      <!-- TRIP LOGS HISTORY BUTTON -->
       <button onclick="showTripLogs()" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500 font-bold text-lg py-3 rounded-full shadow-md transition duration-300">
         📋 VIEW TRIP LOGS (HISTORY)
       </button>
@@ -281,7 +287,7 @@
           toast: true,
           position: 'top-end',
           icon: 'success',
-          title: 'Naka-sync na ang offline data sa Database!',
+          title: 'Naka-sync na ang offline data sa Supabase!',
           showConfirmButton: false,
           timer: 3000,
           background: "#1e293b",
@@ -307,17 +313,39 @@
     async function geoSaveMe() {
       const btn = document.getElementById('find-me');
       btn.disabled = true;
-      btn.textContent = "SAVING...";
+      btn.textContent = "UPLOADING & SAVING...";
 
       const rem = document.getElementById('remarks').value;
       const odo = document.getElementById('odo').value || null;
       const expenseType = document.getElementById("expense").value;
       const amount = parseFloat(document.getElementById("amount").value) || 0;
+      const fileInput = document.getElementById('cameraInput');
       
       const ip = await getIpAddress();
 
       const now = new Date();
       const timeSubmitStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+      let photoUrl = null;
+
+      // Kung naay gipili o gihulagway nga pic ug naay internet, i-upload sa Supabase Storage
+      if (fileInput.files && fileInput.files[0] && navigator.onLine) {
+        const file = fileInput.files[0];
+        const fileName = `diary_${Date.now()}_${Math.random().toString(36.substring(2, 7))}.jpg`;
+        
+        const { data: uploadData, error: uploadError } = await mySupabase.storage
+          .from('diary_photos')
+          .upload(fileName, file);
+
+        if (!uploadError) {
+          const { data: publicUrlData } = mySupabase.storage
+            .from('diary_photos')
+            .getPublicUrl(fileName);
+          photoUrl = publicUrlData.publicUrl;
+        } else {
+          console.error("Photo upload error:", uploadError);
+        }
+      }
 
       const dbRow = {
         dms: currentDms,
@@ -325,7 +353,8 @@
         ip_address: ip,
         remarks: rem,
         odo: odo,
-        time_submit: timeSubmitStr
+        time_submit: timeSubmitStr,
+        photo_url: photoUrl
       };
 
       if (expenseType && amount > 0) {
@@ -337,7 +366,7 @@
         if (success) {
           Swal.fire({
             position: "center",
-            title: "Your diary has been saved",
+            title: "Saved with Photo!",
             text: "RECORDED ONLINE!",
             icon: 'success',
             background: "#1e293b",
@@ -350,7 +379,7 @@
           saveToLocalStorage(dbRow);
           Swal.fire({
             title: "Saved Offline",
-            text: "Wala ma-save sa server, gi-store sa phone muna.",
+            text: "Wala na-save sa server, gi-store sa phone muna.",
             icon: "warning",
             background: "#1e293b",
             color: "#fff"
@@ -381,15 +410,16 @@
       document.getElementById('odo').value = '';
       document.getElementById("expense").value = '';
       document.getElementById("amount").value = '';
+      document.getElementById("cameraInput").value = '';
       geoPangitaaKo();
     }
 
-    // EXPENSE SUMMARY POPUP FUNCTION
+    // EXPENSE SUMMARY FUNCTION
     async function showExpenseSummary() {
       if (!navigator.onLine) {
         Swal.fire({
           title: "Offline Mode",
-          text: "Kinahanglan og internet para ma-load ang summary gikan sa Database.",
+          text: "Kinahanglan og internet para ma-load ang summary gikan sa Supabase.",
           icon: "warning",
           background: "#1e293b",
           color: "#fff"
@@ -468,7 +498,7 @@
                       </div>`;
 
       Swal.fire({
-        title: "📊 WANDERER EXPENSE SUMMARY",
+        title: "📊 WONDERER EXPENSE SUMMARY",
         html: htmlContent,
         background: "#0f172a",
         color: "#fff",
@@ -477,7 +507,7 @@
       });
     }
 
-    // FUNCTION PARA SA TRIP LOGS HISTORY REPORT
+    // TRIP LOGS HISTORY REPORT WITH PHOTO
     async function showTripLogs() {
       if (!navigator.onLine) {
         Swal.fire({
@@ -491,7 +521,7 @@
       }
 
       Swal.fire({
-        title: "Nagkuha sa logs...",
+        title: "Nagkuha sa logs ug hulagway...",
         text: "Palihog paghulat kadiyot.",
         background: "#1e293b",
         color: "#fff",
@@ -499,10 +529,9 @@
         didOpen: () => { Swal.showLoading(); }
       });
 
-      // Kuhaon ang time_submit, dms, address, ug remarks gikan sa table
       const { data, error } = await mySupabase
         .from('kher_diary')
-        .select('time_submit, dms, address, remarks')
+        .select('time_submit, dms, address, remarks, photo_url')
         .order('time_submit', { ascending: false });
       
       if (error) {
@@ -528,24 +557,25 @@
         return;
       }
 
-      // Himuon ang nindot ug hapsay nga listahan para sa SweetAlert popup
-      let htmlContent = `<div style="text-align: left; max-height: 350px; overflow-y: auto; padding: 5px;">`;
+      let htmlContent = `<div style="text-align: left; max-height: 400px; overflow-y: auto; padding: 5px;">`;
       
       data.forEach((row, index) => {
         let tSubmit = row.time_submit || 'N/A';
         let dmsVal = row.dms || 'N/A';
         let addrVal = row.address || 'N/A';
         let remVal = row.remarks || 'No remarks';
+        let photoHtml = row.photo_url ? `<div style="margin-top: 8px;"><img src="${row.photo_url}" style="width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px; border: 1px solid #f59e0b;" /></div>` : '';
 
         htmlContent += `
-          <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 10px; margin-bottom: 10px; font-size: 13px;">
+          <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 10px; margin-bottom: 12px; font-size: 13px;">
             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 4px; margin-bottom: 6px;">
               <span style="color: #f59e0b; font-weight: bold;">🕒 ${tSubmit}</span>
               <span style="color: #94a3b8; font-size: 11px;">#${data.length - index}</span>
             </div>
             <div style="color: #38bdf8; font-family: monospace; font-size: 11px; margin-bottom: 3px;">📍 ${dmsVal}</div>
             <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 4px;">🏠 ${addrVal}</div>
-            <div style="color: #4ade80; font-style: italic; font-weight: 500;">💬 "${remVal}"</div>
+            <div style="color: #4ade80; font-style: italic; font-weight: 500; margin-bottom: 4px;">💬 "${remVal}"</div>
+            ${photoHtml}
           </div>
         `;
       });
@@ -553,7 +583,7 @@
       htmlContent += `</div>`;
 
       Swal.fire({
-        title: "📋 TRIP LOGS & HISTORY",
+        title: "📋 TRIP LOGS & PHOTOS",
         html: htmlContent,
         background: "#0f172a",
         color: "#fff",
