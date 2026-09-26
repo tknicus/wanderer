@@ -102,7 +102,7 @@
     // SUPABASE SETUP (Ilisi ni sa imong tinuod nga credentials)
     const SUPABASE_URL = 'https://iilfklquzyxmdergwawh.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_xO3twPzyDBLhdltnkwoS3w_xswYLyf_';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const mySupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); // <--- NA-FIX NA!
 
     // Initializations
     document.getElementById("theDate").innerHTML = new Date().toDateString();
