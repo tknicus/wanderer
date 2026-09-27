@@ -230,7 +230,7 @@
       });
     }
 
-    // WATERMARK FUNCTION (Gisangkapan og Base64 Logo Embed para 100% mogawas bisan Offline)
+    // WATERMARK FUNCTION (Gisangkapan og Limpyo nga Local Logo Load para Offline/Online)
     function watermarkImage(file, dmsText, dateText, logoSrc) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -246,7 +246,7 @@
             // Draw original photo
             ctx.drawImage(img, 0, 0);
 
-            // Sub-function para sa pagdrowing sa text (Gamit ang manipis ug pino nga outline)
+            // Sub-function para sa pagdrowing sa text ug logo
             const drawTextAndSave = (logoImage) => {
               const padding = Math.floor(canvas.width * 0.03);
               
@@ -271,7 +271,7 @@
                 ctx.restore();
               }
 
-              // Text Setup (Ubos sa Tuo - Paspas, Limpyo, ug Manipis nga Outline)
+              // Text Setup (Ubos sa Tuo - Manipis ug pino nga outline)
               const fontSize = Math.max(20, Math.floor(canvas.width * 0.026));
               ctx.font = `bold ${fontSize}px sans-serif`;
               ctx.textBaseline = 'bottom';
@@ -290,7 +290,7 @@
               textLines.forEach((line, index) => {
                 const currentY = startY + (index * lineHeight);
                 
-                // Manipis ug pino nga shadow/stroke para dili baga tan-awon
+                // Manipis ug pino nga shadow/stroke
                 ctx.lineWidth = fontSize * 0.08; 
                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
                 ctx.strokeText(line, textX, currentY);
@@ -305,7 +305,7 @@
               }, 'image/jpeg', 0.92);
             };
 
-            // Sulayan pag-load ang logo gamit ang Image object
+            // Sulayan pag-load ang local logo
             const logo = new Image();
             logo.crossOrigin = "anonymous";
             
@@ -314,12 +314,12 @@
             };
 
             logo.onerror = function() {
-              console.warn("Wala na-load ang logo file,padayon gihapon ang text.");
-              drawTextAndSave(null); // Ipadayon ang text bisan ug magka-error ang logo file
+              console.warn("Wala na-load ang logo file, padayon gihapon ang text.");
+              drawTextAndSave(null); 
             };
 
-            // Anti-cache ug pagsiguro nga makuha ang logo
-            logo.src = logoSrc + "?t=" + new Date().getTime();
+            // Gihimong direkta ang pagtawag aron mabasa sa Service Worker bisan offline
+            logo.src = logoSrc; 
           };
           img.onerror = () => resolve(file);
           img.src = event.target.result;
