@@ -488,7 +488,7 @@
 
       if (hasPhoto) {
         let file = fileInput.files[0];
-        const logoUrl = "./logo.png"; // GI-FIX: Gibalik sa saktong logo.png file name!
+        const logoUrl = "./wanderer.png";
         
         let watermarkedBlob = await watermarkImage(file, currentDms, timeSubmitStr, logoUrl);
 
@@ -512,6 +512,7 @@
         }
       }
 
+      // HINUNGDAN SA ERROR KAGANINA: Gihimo natong limpyo ang dbRow para sa Supabase (Wala na ang offline_photo)
       const dbRow = {
         dms: currentDms,
         address: currentAddress,
@@ -519,13 +520,15 @@
         remarks: rem || null,
         odo: odo ? parseFloat(odo) : null,
         time_submit: timeSubmitStr,
-        photo_url: photoUrl,
-        offline_photo: offlineBase64
+        photo_url: photoUrl
       };
 
       if (expenseType && amount > 0) {
         dbRow[expenseType] = amount;
       }
+
+      // Bulagon nato ang localRow kung kinahanglan i-save sa phone (naay offline_photo)
+      const localRow = { ...dbRow, offline_photo: offlineBase64 };
 
       if (navigator.onLine) {
         let success = await sendDataToServer(dbRow);
@@ -535,12 +538,12 @@
           });
           resetForm();
         } else {
-          saveToLocalStorage(dbRow);
+          saveToLocalStorage(localRow);
           Swal.fire({ title: "Saved Offline", text: "Wala ma-save sa server, gi-store sa phone muna.", icon: "warning", background: "#1e293b", color: "#fff" });
           resetForm();
         }
       } else {
-        saveToLocalStorage(dbRow);
+        saveToLocalStorage(localRow);
         Swal.fire({
           position: "center", title: "Saved to Phone (Offline)", text: "Mu-auto sync kini inig abot sa internet uban ang Litrato!", icon: 'info', background: "#1e293b", color: "#fff", showConfirmButton: false, timer: 3000
         });
