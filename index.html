@@ -391,53 +391,67 @@
         btn.disabled = true;
       }
 
-      let failedData = [];
-      for (let i = 0; i < offlineData.length; i++) {
-        let row = offlineData[i];
+      try {
+        let remainingData = [...offlineData];
 
-        // 1. I-upload ang Litrato kon duna may offline_photo!
-        if (row.offline_photo) {
+        for (let i = 0; i < offlineData.length; i++) {
+          let row = offlineData[i];
+          let successSync = false;
+
           try {
-            // I-convert pabalik ang Base64 ngadto sa hulagway (Blob)
-            const res = await fetch(row.offline_photo);
-            const blob = await res.blob();
-            const fileName = `diary_sync_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
-            
-            const { data: uploadData, error: uploadError } = await mySupabase.storage
-              .from('diary_photos').upload(fileName, blob);
+            // 1. I-upload ang Litrato kon duna may offline_photo!
+            if (row.offline_photo) {
+              const res = await fetch(row.offline_photo);
+              const blob = await res.blob();
+              const fileName = `diary_sync_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
               
-            if (!uploadError) {
-              const { data: publicUrlData } = mySupabase.storage.from('diary_photos').getPublicUrl(fileName);
-              row.photo_url = publicUrlData.publicUrl; // I-update ang URL
+              const { data: uploadData, error: uploadError } = await mySupabase.storage
+                .from('diary_photos').upload(fileName, blob);
+                
+              if (!uploadError) {
+                const { data: publicUrlData } = mySupabase.storage.from('diary_photos').getPublicUrl(fileName);
+                row.photo_url = publicUrlData.publicUrl; // I-update ang URL
+              } else {
+                console.error("Storage upload error during sync:", uploadError);
+              }
+              // Tangtangon ang bug-at nga offline_photo human mabuhat
+              delete row.offline_photo;
             }
-          } catch (e) {
-            console.error("Failed to upload offline photo:", e);
+
+            // 2. I-save na sa Supabase Table ang nakompleto nga log!
+            let success = await sendDataToServer(row);
+            if (success) {
+              successSync = true;
+            }
+          } catch (itemErr) {
+            console.error("Error syncing specific item:", itemErr);
           }
-          // 2. TANGTANGON ang bug-at nga offline_photo aron dili maapil og sulod sa text database
-          delete row.offline_photo;
+
+          // 3. Kung nalampos pag-sync, TANGTANGON dayon kini sa localStorage!
+          if (successSync) {
+            remainingData = remainingData.filter(item => item !== offlineData[i]);
+            localStorage.setItem('kher_offline_diary', JSON.stringify(remainingData));
+            updatePendingCounter();
+          }
         }
 
-        // 3. I-save na sa Supabase Table ang nakompleto nga log!
-        let success = await sendDataToServer(row);
-        if (!success) {
-          failedData.push(row); // Ibalik sa cache kung mag-error ang server
+        // Kung nahutdan na gyud tanan, limpyohan pag-ayo ang storage
+        let finalRemaining = JSON.parse(localStorage.getItem('kher_offline_diary')) || [];
+        if (finalRemaining.length === 0) {
+          localStorage.removeItem('kher_offline_diary');
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Naka-sync na ang tanang Litrato ug Logs!',
+            showConfirmButton: false,
+            timer: 3500,
+            background: "#1e293b",
+            color: "#fff"
+          });
         }
-      }
-
-      if (failedData.length > 0) {
-        localStorage.setItem('kher_offline_diary', JSON.stringify(failedData));
-      } else {
-        localStorage.removeItem('kher_offline_diary');
-        Swal.fire({
-          toast: true,
-          position: 'top-end',
-          icon: 'success',
-          title: 'Naka-sync na ang mga Litrato ug Logs!',
-          showConfirmButton: false,
-          timer: 3500,
-          background: "#1e293b",
-          color: "#fff"
-        });
+      } catch (err) {
+        console.error("Sync general error:", err);
       }
 
       updatePendingCounter();
