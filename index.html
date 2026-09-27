@@ -130,10 +130,20 @@
   </div>
 
   <script>
-    // SUPABASE SETUP
+    // SUPABASE SETUP (ULTIMATE ANTI-CACHE)
     const SUPABASE_URL = 'https://iilfklquzyxmdergwawh.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_xO3twPzyDBLhdltnkwoS3w_xswYLyf_';
-    const mySupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // Gidugangan natog global fetch settings para pugson nga dili mo-gamit og cache!
+    const mySupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        fetch: (url, options) => {
+          options = options || {};
+          options.cache = 'no-store'; // Dili gyud mo-rely sa memory/cache sa browser o PWA!
+          return fetch(url, options);
+        }
+      }
+    });
 
     // Initializations
     document.getElementById("theDate").innerHTML = new Date().toDateString();
