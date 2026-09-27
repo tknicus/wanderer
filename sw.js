@@ -1,31 +1,41 @@
-const CACHE_NAME = 'wanderer-cache-v8';
+const CACHE_NAME = 'wanderer-cache-v9';
+
+// Listahan sa mga importanteng files
 const urlsToCache = [
   './',
   './index.html',
+  './manifest.json',
   './wanderer.png',
-  './manifest.json', // Gi-dungangan nako og comma diri, Boss!
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/sweetalert2@11',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  'https://lh3.googleusercontent.com/d/15aQxvPrKO7S2lVUdhQ99BrwpJqcNKohl'
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 
-// 1. Install Service Worker ug i-cache ang core files
+// 1. INSTALL: Bulletproof Caching (I-cache tagsa-tagsa aron dili madamay ang uban kon naay mag-error)
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => {
+      console.log('Nag-abli sa cache...');
+      return Promise.all(
+        urlsToCache.map(url => {
+          return cache.add(url).catch(err => {
+            console.warn('Wala na-cache ang file:', url, err);
+            // Dili nato i-throw ang error aron magpadayon gihapon ang pag-cache sa uban!
+          });
+        })
+      );
+    }).then(() => self.skipWaiting())
   );
 });
 
-// 2. Activate ug limpyo sa daan nga cache
+// 2. ACTIVATE: Limpyohan ang karaang cache
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
+            console.log('Gipapas ang daan nga cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -34,43 +44,36 @@ self.addEventListener('activate', event => {
   );
 });
 
-// 3. Fetch strategy uban ang saktong Cache-First Navigation Fallback
+// 3. FETCH: Strategy (Anti-Supabase Cache + Offline Fallback)
 self.addEventListener('fetch', event => {
-  // PANG-KONTRA SA SUPABASE CACHE:
-  // Kon ang gipangayo nga data gikan sa Supabase, AYAW I-CACHE! Kuhaa diretso sa internet.
+  // PANG-KONTRA SA SUPABASE CACHE: Bypass dayon kung database request
   if (event.request.url.includes('supabase.co')) {
-    return; // Mo-bypass ni sa Service Worker aron presko pirme ang database results.
-  }
-
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      caches.match('./index.html')
-        .then(cachedResponse => {
-          if (cachedResponse) return cachedResponse;
-          return caches.match('./');
-        })
-        .then(response => {
-          return response || fetch(event.request);
-        })
-        .catch(() => caches.match('./index.html'))
-    );
-    return;
+    return; 
   }
 
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        return response || fetch(event.request).then(networkResponse => {
-          return caches.open(CACHE_NAME).then(cache => {
-            // I-cache lang ang mga regular http/https requests, ayaw apila ang uban
-            if (event.request.url.startsWith('http')) {
-              cache.put(event.request, networkResponse.clone());
-            }
-            return networkResponse;
-          });
+        // I-return kung naa sa cache
+        if (response) {
+          return response;
+        }
+        
+        // Kung wala sa cache, kuhaon online
+        return fetch(event.request).then(networkResponse => {
+          if (event.request.url.startsWith('http')) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
         });
       }).catch(() => {
-        // Safe fallback kung offline
+        // KUNG OFFLINE UG WALA SA CACHE: Ibalik ang index.html aron dili mo-crash ang PWA
+        if (event.request.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
       })
   );
 });
