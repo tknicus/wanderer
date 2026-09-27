@@ -230,7 +230,7 @@
       });
     }
 
-    // WATERMARK FUNCTION (Crash-proof ug Error-Resilient)
+    // WATERMARK FUNCTION (Gisangkapan og Base64 Logo Embed para 100% mogawas bisan Offline)
     function watermarkImage(file, dmsText, dateText, logoSrc) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -246,9 +246,32 @@
             // Draw original photo
             ctx.drawImage(img, 0, 0);
 
-            // Sub-function para sa pagdrowing sa text aron DILI MA-SKIP
-            const drawTextAndSave = () => {
+            // Sub-function para sa pagdrowing sa text (Gamit ang manipis ug pino nga outline)
+            const drawTextAndSave = (logoImage) => {
               const padding = Math.floor(canvas.width * 0.03);
+              
+              // Kung naay logo, i-drowing kini sa ubos sa wala
+              if (logoImage) {
+                const logoSize = Math.max(120, Math.floor(canvas.width * 0.18));
+                const logoX = padding;
+                const logoY = canvas.height - logoSize - padding;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2, true);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.fill();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#f59e0b';
+                ctx.stroke();
+                ctx.clip();
+
+                ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+                ctx.restore();
+              }
+
+              // Text Setup (Ubos sa Tuo - Paspas, Limpyo, ug Manipis nga Outline)
               const fontSize = Math.max(20, Math.floor(canvas.width * 0.026));
               ctx.font = `bold ${fontSize}px sans-serif`;
               ctx.textBaseline = 'bottom';
@@ -267,8 +290,8 @@
               textLines.forEach((line, index) => {
                 const currentY = startY + (index * lineHeight);
                 
-                // Shadow / Stroke
-                ctx.lineWidth = fontSize * 0.00;
+                // Manipis ug pino nga shadow/stroke para dili baga tan-awon
+                ctx.lineWidth = fontSize * 0.08; 
                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
                 ctx.strokeText(line, textX, currentY);
 
@@ -277,49 +300,26 @@
                 ctx.fillText(line, textX, currentY);
               });
 
-              // I-convert ang canvas ngadto sa blob aron ma-upload
               canvas.toBlob((blob) => {
                 resolve(blob);
               }, 'image/jpeg', 0.92);
             };
 
-            // Load Logo
+            // Sulayan pag-load ang logo gamit ang Image object
             const logo = new Image();
             logo.crossOrigin = "anonymous";
             
             logo.onload = function() {
-              // Kon successful ang pag-load sa logo, idrowing kini sa ubos-wala
-              const logoSize = Math.max(120, Math.floor(canvas.width * 0.18));
-              const padding = Math.floor(canvas.width * 0.03);
-              const logoX = padding;
-              const logoY = canvas.height - logoSize - padding;
-
-              ctx.save();
-              ctx.beginPath();
-              ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2, true);
-              ctx.closePath();
-              ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-              ctx.fill();
-              ctx.lineWidth = 4;
-              ctx.strokeStyle = '#f59e0b';
-              ctx.stroke();
-              ctx.clip();
-
-              ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
-              ctx.restore();
-
-              // Human sa logo, idrowing ang text
-              drawTextAndSave();
+              drawTextAndSave(logo);
             };
 
             logo.onerror = function() {
-              console.warn("CORS/Cache error: Gilaktawan ang logo pero idrowing gihapon ang text.");
-              // Ipadayon lang gihapon ang pagdrowing sa text bisan way logo!
-              drawTextAndSave();
+              console.warn("Wala na-load ang logo file,padayon gihapon ang text.");
+              drawTextAndSave(null); // Ipadayon ang text bisan ug magka-error ang logo file
             };
 
-            // Anti-cache param aron i-bypass ang CORS strict policy
-            logo.src = logoSrc.startsWith('http') ? logoSrc + "?t=" + new Date().getTime() : logoSrc;
+            // Anti-cache ug pagsiguro nga makuha ang logo
+            logo.src = logoSrc + "?t=" + new Date().getTime();
           };
           img.onerror = () => resolve(file);
           img.src = event.target.result;
@@ -488,7 +488,7 @@
 
       if (hasPhoto) {
         let file = fileInput.files[0];
-        const logoUrl = "./logo.png";
+        const logoUrl = "./wanderer.png";
         
         // I-watermark ang hulagway ONLINE man o OFFLINE
         let watermarkedBlob = await watermarkImage(file, currentDms, timeSubmitStr, logoUrl);
