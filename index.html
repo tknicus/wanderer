@@ -463,109 +463,133 @@
     }
 
     function saveToLocalStorage(dbRow) {
-      let savedData = JSON.parse(localStorage.getItem('kher_offline_diary')) || [];
-      savedData.push(dbRow);
-      localStorage.setItem('kher_offline_diary', JSON.stringify(savedData));
-      updatePendingCounter();
-    }
-
-    async function geoSaveMe() {
-      const rem = document.getElementById('remarks').value.trim();
-      const odo = document.getElementById('odo').value.trim();
-      const expenseType = document.getElementById("expense").value;
-      const amount = parseFloat(document.getElementById("amount").value) || 0;
-      const fileInput = document.getElementById('cameraInput');
-      
-      const hasPhoto = fileInput.files && fileInput.files[0];
-
-      if (!rem && !odo && !expenseType && amount === 0 && !hasPhoto) {
+      try {
+        let savedData = JSON.parse(localStorage.getItem('kher_offline_diary')) || [];
+        savedData.push(dbRow);
+        localStorage.setItem('kher_offline_diary', JSON.stringify(savedData));
+        updatePendingCounter();
+        return true;
+      } catch (e) {
+        console.error("LocalStorage full error:", e);
         Swal.fire({
-          title: "Blanko ang Porma!",
-          text: "Palihog butangi bisan usa lang ka field sa dili pa mo-submit.",
-          icon: "warning",
+          title: "Puno na ang Phone Storage!",
+          text: "Na-reach na ang limit sa offline memory tungod sa kabug-at sa litrato. Palihog pag-connect kadiyot sa internet para ma-sync ug malimpyohan ang pending.",
+          icon: "error",
           background: "#1e293b",
           color: "#fff"
         });
-        return; 
+        return false;
       }
+    }
 
+    async function geoSaveMe() {
       const btn = document.getElementById('find-me');
-      btn.disabled = true;
-      btn.textContent = "PROCESSING & UPLOADING...";
-      
-      const ip = await getIpAddress();
-      const now = new Date();
-      const timeSubmitStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-
-      let photoUrl = null;
-      let offlineBase64 = null;
-
-      if (hasPhoto) {
-        let file = fileInput.files[0];
-        const logoUrl = "./wanderer.png";
+      try {
+        const rem = document.getElementById('remarks').value.trim();
+        const odo = document.getElementById('odo').value.trim();
+        const expenseType = document.getElementById("expense").value;
+        const amount = parseFloat(document.getElementById("amount").value) || 0;
+        const fileInput = document.getElementById('cameraInput');
         
-        let watermarkedBlob = await watermarkImage(file, currentDms, timeSubmitStr, logoUrl);
+        const hasPhoto = fileInput.files && fileInput.files[0];
+
+        if (!rem && !odo && !expenseType && amount === 0 && !hasPhoto) {
+          Swal.fire({
+            title: "Blanko ang Porma!",
+            text: "Palihog butangi bisan usa lang ka field sa dili pa mo-submit.",
+            icon: "warning",
+            background: "#1e293b",
+            color: "#fff"
+          });
+          return; 
+        }
+
+        btn.disabled = true;
+        btn.textContent = "PROCESSING & UPLOADING...";
+        
+        const ip = await getIpAddress();
+        const now = new Date();
+        const timeSubmitStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+        let photoUrl = null;
+        let offlineBase64 = null;
+
+        if (hasPhoto) {
+          let file = fileInput.files[0];
+          const logoUrl = "./wanderer.png";
+          
+          let watermarkedBlob = await watermarkImage(file, currentDms, timeSubmitStr, logoUrl);
+
+          if (navigator.onLine) {
+            const fileName = `diary_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
+            const { data: uploadData, error: uploadError } = await mySupabase.storage
+              .from('diary_photos')
+              .upload(fileName, watermarkedBlob);
+
+            if (uploadError) {
+              Swal.fire({ title: "Error sa Pag-upload!", text: uploadError.message, icon: "error", background: "#1e293b", color: "#fff" });
+              return;
+            } else {
+              const { data: publicUrlData } = mySupabase.storage.from('diary_photos').getPublicUrl(fileName);
+              photoUrl = publicUrlData.publicUrl;
+            }
+          } else {
+            offlineBase64 = await blobToBase64(watermarkedBlob);
+          }
+        }
+
+        const dbRow = {
+          dms: currentDms,
+          address: currentAddress,
+          ip_address: ip,
+          remarks: rem || null,
+          odo: odo ? parseFloat(odo) : null,
+          time_submit: timeSubmitStr,
+          photo_url: photoUrl
+        };
+
+        if (expenseType && amount > 0) {
+          dbRow[expenseType] = amount;
+        }
+
+        const localRow = { ...dbRow, offline_photo: offlineBase64 };
 
         if (navigator.onLine) {
-          const fileName = `diary_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
-          const { data: uploadData, error: uploadError } = await mySupabase.storage
-            .from('diary_photos')
-            .upload(fileName, watermarkedBlob);
-
-          if (uploadError) {
-            Swal.fire({ title: "Error sa Pag-upload!", text: uploadError.message, icon: "error", background: "#1e293b", color: "#fff" });
-            btn.disabled = false;
-            btn.textContent = "S U B M I T";
-            return;
+          let success = await sendDataToServer(dbRow);
+          if (success) {
+            Swal.fire({
+              position: "center", title: "Naka-save na sa Diary!", text: "RECORDED ONLINE!", icon: 'success', background: "#1e293b", color: "#fff", showConfirmButton: false, timer: 2000
+            });
+            resetForm();
           } else {
-            const { data: publicUrlData } = mySupabase.storage.from('diary_photos').getPublicUrl(fileName);
-            photoUrl = publicUrlData.publicUrl;
+            let saved = saveToLocalStorage(localRow);
+            if (saved) resetForm();
           }
         } else {
-          offlineBase64 = await blobToBase64(watermarkedBlob);
+          let saved = saveToLocalStorage(localRow);
+          if (saved) {
+            Swal.fire({
+              position: "center", title: "Saved to Phone (Offline)", text: "Mu-auto sync kini inig abot sa internet uban ang Litrato!", icon: 'info', background: "#1e293b", color: "#fff", showConfirmButton: false, timer: 3000
+            });
+            resetForm();
+          }
         }
-      }
-
-      // HINUNGDAN SA ERROR KAGANINA: Gihimo natong limpyo ang dbRow para sa Supabase (Wala na ang offline_photo)
-      const dbRow = {
-        dms: currentDms,
-        address: currentAddress,
-        ip_address: ip,
-        remarks: rem || null,
-        odo: odo ? parseFloat(odo) : null,
-        time_submit: timeSubmitStr,
-        photo_url: photoUrl
-      };
-
-      if (expenseType && amount > 0) {
-        dbRow[expenseType] = amount;
-      }
-
-      // Bulagon nato ang localRow kung kinahanglan i-save sa phone (naay offline_photo)
-      const localRow = { ...dbRow, offline_photo: offlineBase64 };
-
-      if (navigator.onLine) {
-        let success = await sendDataToServer(dbRow);
-        if (success) {
-          Swal.fire({
-            position: "center", title: "Naka-save na sa Diary!", text: "RECORDED ONLINE!", icon: 'success', background: "#1e293b", color: "#fff", showConfirmButton: false, timer: 2000
-          });
-          resetForm();
-        } else {
-          saveToLocalStorage(localRow);
-          Swal.fire({ title: "Saved Offline", text: "Wala ma-save sa server, gi-store sa phone muna.", icon: "warning", background: "#1e293b", color: "#fff" });
-          resetForm();
-        }
-      } else {
-        saveToLocalStorage(localRow);
+      } catch (err) {
+        console.error("geoSaveMe catch error:", err);
         Swal.fire({
-          position: "center", title: "Saved to Phone (Offline)", text: "Mu-auto sync kini inig abot sa internet uban ang Litrato!", icon: 'info', background: "#1e293b", color: "#fff", showConfirmButton: false, timer: 3000
+          title: "Hinaot Pasayloa",
+          text: "May nahitabo nga sadsad sa sistema: " + err.message,
+          icon: "error",
+          background: "#1e293b",
+          color: "#fff"
         });
-        resetForm();
+      } finally {
+        // Siguruhon gyud nga mabalik sa normal ang button bisan unsa pay mahitabo!
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "S U B M I T";
+        }
       }
-
-      btn.disabled = false;
-      btn.textContent = "S U B M I T";
     }
 
     function resetForm() {
