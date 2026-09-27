@@ -221,6 +221,15 @@
       });
     }
 
+    // HELPER FUNCTION: Convert hulagway ngadto sa Base64 aron ma-save sa offline memory
+    function blobToBase64(blob) {
+      return new Promise((resolve, _) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    }
+
     // WATERMARK FUNCTION (Crash-proof ug Error-Resilient)
     function watermarkImage(file, dmsText, dateText, logoSrc) {
       return new Promise((resolve) => {
@@ -259,7 +268,7 @@
                 const currentY = startY + (index * lineHeight);
                 
                 // Shadow / Stroke
-                ctx.lineWidth = fontSize * 0.25;
+                ctx.lineWidth = fontSize * 0.00;
                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
                 ctx.strokeText(line, textX, currentY);
 
@@ -384,9 +393,34 @@
 
       let failedData = [];
       for (let i = 0; i < offlineData.length; i++) {
-        let success = await sendDataToServer(offlineData[i]);
+        let row = offlineData[i];
+
+        // 1. I-upload ang Litrato kon duna may offline_photo!
+        if (row.offline_photo) {
+          try {
+            // I-convert pabalik ang Base64 ngadto sa hulagway (Blob)
+            const res = await fetch(row.offline_photo);
+            const blob = await res.blob();
+            const fileName = `diary_sync_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
+            
+            const { data: uploadData, error: uploadError } = await mySupabase.storage
+              .from('diary_photos').upload(fileName, blob);
+              
+            if (!uploadError) {
+              const { data: publicUrlData } = mySupabase.storage.from('diary_photos').getPublicUrl(fileName);
+              row.photo_url = publicUrlData.publicUrl; // I-update ang URL
+            }
+          } catch (e) {
+            console.error("Failed to upload offline photo:", e);
+          }
+          // 2. TANGTANGON ang bug-at nga offline_photo aron dili maapil og sulod sa text database
+          delete row.offline_photo;
+        }
+
+        // 3. I-save na sa Supabase Table ang nakompleto nga log!
+        let success = await sendDataToServer(row);
         if (!success) {
-          failedData.push(offlineData[i]);
+          failedData.push(row); // Ibalik sa cache kung mag-error ang server
         }
       }
 
@@ -398,9 +432,9 @@
           toast: true,
           position: 'top-end',
           icon: 'success',
-          title: 'Naka-sync na ang offline data sa Supabase!',
+          title: 'Naka-sync na ang mga Litrato ug Logs!',
           showConfirmButton: false,
-          timer: 3000,
+          timer: 3500,
           background: "#1e293b",
           color: "#fff"
         });
@@ -430,16 +464,15 @@
       
       const hasPhoto = fileInput.files && fileInput.files[0];
 
-      // KINI ANG VALIDATION: Kon pulos blangko ang tanan, i-block ang submit!
       if (!rem && !odo && !expenseType && amount === 0 && !hasPhoto) {
         Swal.fire({
           title: "Blanko ang Porma!",
-          text: "Palihog butangi bisan usa lang ka field (Remarks, ODO, Expense, o Litrato) sa dili pa mo-submit.",
+          text: "Palihog butangi bisan usa lang ka field sa dili pa mo-submit.",
           icon: "warning",
           background: "#1e293b",
           color: "#fff"
         });
-        return; // Mo-undang ug dili dayon mo-save sa database
+        return; 
       }
 
       const btn = document.getElementById('find-me');
@@ -447,41 +480,37 @@
       btn.textContent = "PROCESSING & UPLOADING...";
       
       const ip = await getIpAddress();
-
       const now = new Date();
       const timeSubmitStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
       let photoUrl = null;
+      let offlineBase64 = null; // Bag-ong sudlanan kung offline
 
-      if (hasPhoto && navigator.onLine) {
+      if (hasPhoto) {
         let file = fileInput.files[0];
+        const logoUrl = "./logo.png";
         
-        // Watermark Image
-        const logoUrl = "./wanderer.png";
-        file = await watermarkImage(file, currentDms, timeSubmitStr, logoUrl);
+        // I-watermark ang hulagway ONLINE man o OFFLINE
+        let watermarkedBlob = await watermarkImage(file, currentDms, timeSubmitStr, logoUrl);
 
-        const fileName = `diary_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
-        
-        const { data: uploadData, error: uploadError } = await mySupabase.storage
-          .from('diary_photos')
-          .upload(fileName, file);
-
-        if (uploadError) {
-          Swal.fire({
-            title: "Error sa Pag-upload!",
-            text: uploadError.message,
-            icon: "error",
-            background: "#1e293b",
-            color: "#fff"
-          });
-          btn.disabled = false;
-          btn.textContent = "S U B M I T";
-          return;
-        } else {
-          const { data: publicUrlData } = mySupabase.storage
+        if (navigator.onLine) {
+          const fileName = `diary_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
+          const { data: uploadData, error: uploadError } = await mySupabase.storage
             .from('diary_photos')
-            .getPublicUrl(fileName);
-          photoUrl = publicUrlData.publicUrl;
+            .upload(fileName, watermarkedBlob);
+
+          if (uploadError) {
+            Swal.fire({ title: "Error sa Pag-upload!", text: uploadError.message, icon: "error", background: "#1e293b", color: "#fff" });
+            btn.disabled = false;
+            btn.textContent = "S U B M I T";
+            return;
+          } else {
+            const { data: publicUrlData } = mySupabase.storage.from('diary_photos').getPublicUrl(fileName);
+            photoUrl = publicUrlData.publicUrl;
+          }
+        } else {
+          // KUNG OFFLINE: I-convert ang picture aron matago sa selpon!
+          offlineBase64 = await blobToBase64(watermarkedBlob);
         }
       }
 
@@ -492,7 +521,8 @@
         remarks: rem || null,
         odo: odo ? parseFloat(odo) : null,
         time_submit: timeSubmitStr,
-        photo_url: photoUrl
+        photo_url: photoUrl,
+        offline_photo: offlineBase64 // Ibutang ang offline picture temporaryo
       };
 
       if (expenseType && amount > 0) {
@@ -503,38 +533,18 @@
         let success = await sendDataToServer(dbRow);
         if (success) {
           Swal.fire({
-            position: "center",
-            title: "Naka-save na sa Diary!",
-            text: "RECORDED ONLINE!",
-            icon: 'success',
-            background: "#1e293b",
-            color: "#fff",
-            showConfirmButton: false,
-            timer: 2000
+            position: "center", title: "Naka-save na sa Diary!", text: "RECORDED ONLINE!", icon: 'success', background: "#1e293b", color: "#fff", showConfirmButton: false, timer: 2000
           });
           resetForm();
         } else {
           saveToLocalStorage(dbRow);
-          Swal.fire({
-            title: "Saved Offline",
-            text: "Wala ma-save sa server, gi-store sa phone muna.",
-            icon: "warning",
-            background: "#1e293b",
-            color: "#fff"
-          });
+          Swal.fire({ title: "Saved Offline", text: "Wala ma-save sa server, gi-store sa phone muna.", icon: "warning", background: "#1e293b", color: "#fff" });
           resetForm();
         }
       } else {
         saveToLocalStorage(dbRow);
         Swal.fire({
-          position: "center",
-          title: "Saved to Phone (Offline)",
-          text: "Mu-auto sync kini inig abot sa internet!",
-          icon: 'info',
-          background: "#1e293b",
-          color: "#fff",
-          showConfirmButton: false,
-          timer: 2500
+          position: "center", title: "Saved to Phone (Offline)", text: "Mu-auto sync kini inig abot sa internet uban ang Litrato!", icon: 'info', background: "#1e293b", color: "#fff", showConfirmButton: false, timer: 3000
         });
         resetForm();
       }
