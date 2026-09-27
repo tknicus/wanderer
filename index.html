@@ -484,13 +484,12 @@
       const timeSubmitStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
       let photoUrl = null;
-      let offlineBase64 = null; // Bag-ong sudlanan kung offline
+      let offlineBase64 = null;
 
       if (hasPhoto) {
         let file = fileInput.files[0];
-        const logoUrl = "./wanderer.png";
+        const logoUrl = "./logo.png"; // GI-FIX: Gibalik sa saktong logo.png file name!
         
-        // I-watermark ang hulagway ONLINE man o OFFLINE
         let watermarkedBlob = await watermarkImage(file, currentDms, timeSubmitStr, logoUrl);
 
         if (navigator.onLine) {
@@ -509,7 +508,6 @@
             photoUrl = publicUrlData.publicUrl;
           }
         } else {
-          // KUNG OFFLINE: I-convert ang picture aron matago sa selpon!
           offlineBase64 = await blobToBase64(watermarkedBlob);
         }
       }
@@ -522,7 +520,7 @@
         odo: odo ? parseFloat(odo) : null,
         time_submit: timeSubmitStr,
         photo_url: photoUrl,
-        offline_photo: offlineBase64 // Ibutang ang offline picture temporaryo
+        offline_photo: offlineBase64
       };
 
       if (expenseType && amount > 0) {
