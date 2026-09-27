@@ -1,7 +1,8 @@
-const CACHE_NAME = 'wanderer-cache-v6';
+const CACHE_NAME = 'wanderer-cache-v7';
 const urlsToCache = [
   './',
   './index.html',
+  './wanderer.png',
   './manifest.json', // Gi-dungangan nako og comma diri, Boss!
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/sweetalert2@11',
