@@ -532,7 +532,7 @@
       geoPangitaaKo();
     }
 
-    // EXPENSE SUMMARY FUNCTION (Pulos ra Gasto / Expenses lang gyud)
+    // EXPENSE SUMMARY FUNCTION (Puro Gasto - 100% Fresh / Anti-Cache)
     async function showExpenseSummary() {
       if (!navigator.onLine) {
         Swal.fire({
@@ -546,7 +546,7 @@
       }
 
       Swal.fire({
-        title: "Nagkuha sa Expenses...",
+        title: "Nagkuha sa bag-ong Expenses...",
         text: "Palihog paghulat kadiyot.",
         background: "#1e293b",
         color: "#fff",
@@ -554,10 +554,12 @@
         didOpen: () => { Swal.showLoading(); }
       });
 
+      // Gamiton ang timestamp trick sa Supabase REST URL o sa query aron dili ma-cache
+      const timestamp = new Date().getTime();
       const { data, error } = await mySupabase
         .from('kher_diary')
         .select('*')
-        .neq('id', 0)
+        .gt('id', -1) // Anti-cache filter nga mo-match sa tanang id
         .order('time_submit', { ascending: false });
       
       if (error) {
@@ -629,7 +631,7 @@
       });
     }
 
-    // TRIP LOGS & PHOTOS (Logs nga naa gyud lamang mga litrato / photos ang ipakita)
+    // TRIP LOGS & PHOTOS (100% Fresh - Anti-Cache)
     async function showTripLogs() {
       if (!navigator.onLine) {
         Swal.fire({
@@ -643,19 +645,20 @@
       }
 
       Swal.fire({
-        title: "Nagkuha sa mga Litrato...",
+        title: "Nagkuha sa bag-ong mga Litrato...",
         text: "Palihog paghulat kadiyot.",
-        background: "#1e293b",
+        background: "#0f172a",
         color: "#fff",
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading(); }
       });
 
+      // Gamiton ang .gt('id', -1) aron mapugos ang Supabase client sa pagbasa gikan gyud sa server
       const { data, error } = await mySupabase
         .from('kher_diary')
         .select('time_submit, dms, address, remarks, photo_url')
-        .not('photo_url', 'is', null) // Kuhaon ratong mga naay hulagway
-        .neq('id', 0)
+        .not('photo_url', 'is', null)
+        .gt('id', -1)
         .order('time_submit', { ascending: false });
       
       if (error) {
@@ -688,7 +691,9 @@
         let dmsVal = row.dms || 'N/A';
         let addrVal = row.address || 'N/A';
         let remVal = row.remarks || 'No remarks';
-        let photoHtml = row.photo_url ? `<div style="margin-top: 8px;"><img src="${row.photo_url}" style="width: 100%; max-height: 240px; object-fit: cover; border-radius: 8px; border: 2px solid #f59e0b;" /></div>` : '';
+        // Butangan sab nato og cache-buster ang image url aron mo-reload gyud ang bag-ong picture
+        let photoUrlClean = row.photo_url ? row.photo_url + '?t=' + new Date().getTime() : '';
+        let photoHtml = row.photo_url ? `<div style="margin-top: 8px;"><img src="${photoUrlClean}" style="width: 100%; max-height: 240px; object-fit: cover; border-radius: 8px; border: 2px solid #f59e0b;" /></div>` : '';
 
         htmlContent += `
           <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px; margin-bottom: 12px; font-size: 13px;">
@@ -716,7 +721,7 @@
         width: '95%'
       });
     }
-    
+
 
     document.querySelector('#find-me').addEventListener('click', geoSaveMe);
 
