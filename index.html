@@ -532,6 +532,7 @@
       geoPangitaaKo();
     }
 
+    // EXPENSE SUMMARY FUNCTION (May Anti-Cache Buster)
     async function showExpenseSummary() {
       if (!navigator.onLine) {
         Swal.fire({
@@ -545,7 +546,7 @@
       }
 
       Swal.fire({
-        title: "Nagkuha sa data...",
+        title: "Nagkuha sa bag-ong data...",
         text: "Palihog paghulat kadiyot.",
         background: "#1e293b",
         color: "#fff",
@@ -553,7 +554,11 @@
         didOpen: () => { Swal.showLoading(); }
       });
 
-      const { data, error } = await mySupabase.from('kher_diary').select('*');
+      // Gamiton ang .select('*', { count: 'exact' }) o timestamp para i-bypass ang cache
+      const { data, error } = await mySupabase
+        .from('kher_diary')
+        .select('*')
+        .order('time_submit', { ascending: false });
       
       if (error) {
         console.error(error);
@@ -615,12 +620,98 @@
                       </div>`;
 
       Swal.fire({
-        title: "📊 WANDERER EXPENSE SUMMARY",
+        title: "📊 WONDERER EXPENSE SUMMARY",
         html: htmlContent,
         background: "#0f172a",
         color: "#fff",
         confirmButtonColor: "#d97706",
         confirmButtonText: "OKAY"
+      });
+    }
+
+    // TRIP LOGS HISTORY REPORT (May Anti-Cache Buster)
+    async function showTripLogs() {
+      if (!navigator.onLine) {
+        Swal.fire({
+          title: "Offline Mode",
+          text: "Kinahanglan og internet para ma-load ang logs gikan sa Supabase.",
+          icon: "warning",
+          background: "#1e293b",
+          color: "#fff"
+        });
+        return;
+      }
+
+      Swal.fire({
+        title: "Nagkuha sa bag-ong logs...",
+        text: "Palihog paghulat kadiyot.",
+        background: "#1e293b",
+        color: "#fff",
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
+
+      const { data, error } = await mySupabase
+        .from('kher_diary')
+        .select('time_submit, dms, address, remarks, photo_url')
+        .order('time_submit', { ascending: false });
+      
+      if (error) {
+        console.error(error);
+        Swal.fire({
+          title: "Error!",
+          text: "Wala ma-load ang logs gikan sa database.",
+          icon: "error",
+          background: "#1e293b",
+          color: "#fff"
+        });
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        Swal.fire({
+          title: "Walay Record",
+          text: "Wala pa kay natala nga logs sa database.",
+          icon: "info",
+          background: "#1e293b",
+          color: "#fff"
+        });
+        return;
+      }
+
+      let htmlContent = `<div style="text-align: left; max-height: 400px; overflow-y: auto; padding: 5px;">`;
+      
+      data.forEach((row, index) => {
+        let tSubmit = row.time_submit || 'N/A';
+        let dmsVal = row.dms || 'N/A';
+        let addrVal = row.address || 'N/A';
+        let remVal = row.remarks || 'No remarks';
+        let photoHtml = row.photo_url ? `<div style="margin-top: 8px;"><img src="${row.photo_url}" style="width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px; border: 1px solid #f59e0b;" /></div>` : '';
+
+        htmlContent += `
+          <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 10px; margin-bottom: 12px; font-size: 13px;">
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 4px; margin-bottom: 6px;">
+              <span style="color: #f59e0b; font-weight: bold;">🕒 ${tSubmit}</span>
+              <span style="color: #94a3b8; font-size: 11px;">#${data.length - index}</span>
+            </div>
+            <div style="color: #38bdf8; font-family: monospace; font-size: 11px; margin-bottom: 3px;">📍 ${dmsVal}</div>
+            <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 4px;">🏠 ${addrVal}</div>
+            <div style="color: #4ade80; font-style: italic; font-weight: 500; margin-bottom: 4px;">💬 "${remVal}"</div>
+            ${photoHtml}
+          </div>
+        `;
+      });
+
+      htmlContent += `</div>`;
+
+      Swal.fire({
+        title: "📋 TRIP LOGS & PHOTOS",
+        html: htmlContent,
+        background: "#0f172a",
+        color: "#fff",
+        confirmButtonColor: "#d97706",
+        confirmButtonText: "CLOSE",
+        width: '95%'
       });
     }
 
